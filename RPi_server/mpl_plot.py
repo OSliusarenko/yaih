@@ -8,9 +8,65 @@ import matplotlib.pyplot as plt
 import numpy as np
 from io import StringIO, BytesIO
 
+html_content = """
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+  <html>
+<head>
+	<title>Sensors Plot</title>
+	<script language="JavaScript">
+<!--
+
+function Start() {
+    var e = document.getElementById("ddlViewBy");
+    var strUser = e.options[e.selectedIndex].value;
+
+    var inp = document.getElementsByName('r');
+    var i = 0;
+    for (i = 0; i < inp.length; i++) {
+        if (inp[i].type == "radio" && inp[i].checked) {
+            break;
+        }
+    }
+
+	//alert(strUser + " " + inp[i].value);
+	
+	window.location = "img/" + strUser;
+}
+
+//-->
+</script>
+</head>
+
+<body text="#000000"  bgcolor="#FFFeea">
+<p align="center">
+<b>Select what to plot</b> <br> <br>
+</p>
+<hr width="50%">
+<p align="center">
+<select id="ddlViewBy">
+  <option value="0.5">factor=0.5</option>
+  <option value="1" selected="selected">factor=1</option>
+  <option value="2">factor=2</option>
+</select>
+
+<br>
+
+<input type="radio" name="r" value=0.675>sensor #1<br> 
+<input type="radio" name="r" value=0.34>sensor #2<br>
+<br><br>
+<input type="button" value=" Start " onclick="Start();">
+</p>
+
+
+
+</body>
+</html>
+"""
+
 class MainHandler(tornado.web.RequestHandler):
   def get(self):
-    self.write("Hello World!")
+    self.write(html_content)
 
 class ImgHandler(tornado.web.RequestHandler):
   def get(self, arg=1):
