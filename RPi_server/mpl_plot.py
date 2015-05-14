@@ -6,6 +6,9 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+import datetime
+import numpy as np
 from io import StringIO, BytesIO
 
 html_content = """
@@ -13,8 +16,8 @@ html_content = """
 
   <html>
 <head>
-	<title>Sensors Plot</title>
-	<script language="JavaScript">
+    <title>Sensors Plot</title>
+    <script language="JavaScript">
 <!--
 
 function Start() {
@@ -29,9 +32,9 @@ function Start() {
         }
     }
 
-	//alert(strUser + " " + inp[i].value);
-	
-	window.location = "img/" + strUser;
+    //alert(strUser + " " + inp[i].value);
+    
+    window.location = "img/" + strUser;
 }
 
 //-->
@@ -44,8 +47,9 @@ function Start() {
 </p>
 <hr width="50%">
 <p align="center">
+plot recent:
 <select id="ddlViewBy">
-  <option value="0.5">factor=0.5</option>
+  <option value="day">day</option>
   <option value="1" selected="selected">factor=1</option>
   <option value="2">factor=2</option>
 </select>
@@ -65,22 +69,51 @@ function Start() {
 """
 
 class MainHandler(tornado.web.RequestHandler):
-  def get(self):
-    self.write(html_content)
+    def get(self):
+        self.write(html_content)
 
 class ImgHandler(tornado.web.RequestHandler):
-  def get(self, arg=1):
+    def get(self, arg=1):
+        ct = time.time()
+        data = []
+        if arg=='day':
+            with open('sensor_1.dat', 'r') as f:
+                for line in f:
+                    t = int(float(line.split('\t')[0]))
+                    s = float(line.split('\t')[1])
+                    if ct - t < 86400:
+                        data.append([t, s])
+                                   
+            plt.rcParams['figure.figsize'] = (8.0,4.0)
 
-    arg=float(arg)
-    xs = np.linspace(-10, 10, 1000)
-    plt.plot(xs, np.sin(xs/arg), label='sin(x)')
+            if len(data) > 150: # avoid plotting too much points
+                delta_data = int(len(data)/149) 
+                                   
+            new_data = data[::delta_data]
+            x = [d[0] for d in new_data]
+            y = [d[1] for d in new_data]
+            
+            t_start = datetime.datetime.fromtimestamp(x[0])
+            t_delta = datetime.timedelta(hours=3)
+            
+            xpticks = [t_start +i*t_delta for i in xrange(9)]
+            xvticks = map('{:%H:%M}'.format, xpticks)
+            xpticks = [time.mktime(i.timetuple()) for i in xpticks]
 
-    io = StringIO() #io = BytesIO()
-    plt.savefig(io, format='svg') #plt.savefig(io, format='png')
-    plt.close()
-    self.set_header("Content-Type", "image/svg+xml")
-    #self.set_header("Content-Type", "png")
-    self.write(io.getvalue())
+            plt.title('Data for ' + '{:%Y-%m-%d}'.format(t_start) + 
+                        ' - ' + '{:%Y-%m-%d}'.format(datetime.date.today()))
+            plt.plot(x, y, 'b-', linewidth=2, label='sensor_1')            
+            plt.xticks(xpticks, xvticks)
+            
+            plt.legend(loc=1)
+            
+            io = StringIO()
+            plt.savefig(io, format='svg')
+            plt.close()
+            self.set_header("Content-Type", "image/svg+xml")
+            self.write(io.getvalue())
+
+
 
 application = tornado.web.Application([
   (r"/", MainHandler),
