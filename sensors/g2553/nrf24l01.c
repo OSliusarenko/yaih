@@ -50,7 +50,7 @@ void NRF_init(void)
     TXBuf[0]=0x02;
     NRF_WRreg(0x05, 1);
     //rf_setup
-    TXBuf[0]=0x07;
+    TXBuf[0]=0b111;
     NRF_WRreg(0x06, 1);
     //rx_addr_p0
     TXBuf[0] = 0xe7;
