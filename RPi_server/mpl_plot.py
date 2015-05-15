@@ -147,11 +147,11 @@ class ImgHandler(tornado.web.RequestHandler):
         xpticks = [time.mktime(i.timetuple()) for i in xpticks]
        
         plt.title('Data for ' + '{:%Y-%m-%d}'.format(t_start) + 
-                        ' - ' + '{:%Y-%m-%d}'.format(datetime.date.today()))
-        plt.plot(x, y, 'b-', linewidth=2, label='sensor_1') 
+                        ' - ' + '{:%Y-%m-%d}'.format(t_end))
+        plt.plot(x, y, 'm-', linewidth=1.5, label='sensor_1') 
         plt.xticks(xpticks, xvticks)
         plt.legend(loc=1)
-        plt.xlim([xpticks[0], xpticks[-1]])
+        plt.xlim([x[0], x[-1]])
             
         io = StringIO()
         plt.savefig(io, format='svg')
