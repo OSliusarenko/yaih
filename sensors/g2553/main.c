@@ -32,7 +32,7 @@ void deepSleep(unsigned char dsCnt);
 void sleepDelay(unsigned int cnt);
 
 #include "etc.c"
-//#include "uart.c"
+#include "uart.c"
 #include "nrf24l01.c"
 
 
@@ -46,7 +46,7 @@ void main(void) {
 	while(1)
 	{
 		IO_init();
-//		UART_init();
+		UART_init();
         
         /*
 		termInit();
@@ -86,17 +86,45 @@ void main(void) {
 		TXBuf[5]=0;
 		TXBuf[6]=(ADC10MEM>>8) & 0Xff;
 		TXBuf[7]=ADC10MEM & 0Xff;
+        
+      
 		NRF_cmd(W_TX_PAYLOAD, payloadWidth);
 	    NRF_transmit();
+        
+        unsigned char ack_pw;
 
-		while(!(NRF_status() & STATUS_TX_DS))	//wait tx
+		while(1)	//wait for flag
 		{
-			tmp=NRF_status();
-//			putChar(0x0a);
-//			putChar(0x0d);
-//			hex2uart(tmp>>4);
-//			hex2uart(tmp);
-		}
+            tmp=NRF_status();
+
+            if(tmp & STATUS_RX_DR)
+            {
+                TXBuf[0] = 0xFF; // NRF's NOP
+                NRF_cmd(0x60, 1); // get dyn payload width
+                ack_pw = RXBuf[0];
+                NRF_readRX(ack_pw);
+                hex2uart(RXBuf[0]);
+                NRF_flush_rx();
+            }        
+            if(tmp & STATUS_TX_DS)
+            {
+                putChar('s');
+                NRF_flush_tx();
+                putChar(0x0a);
+                putChar(0x0d);
+                break;
+            }
+            if(tmp & STATUS_MAX_RT)
+            {
+                putChar('!');
+                NRF_flush_tx();
+                NRF_flush_rx();
+                putChar(0x0a);
+                putChar(0x0d);
+                break;
+            }
+        }
+
 		NRF_down();
 
 		P1OUT &=~LED0;

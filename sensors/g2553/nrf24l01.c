@@ -35,7 +35,7 @@ void NRF_init(void)
 	SPI_init();
 
 	//en_aa
-    TXBuf[0]=0;
+    TXBuf[0]=0x3f;
     NRF_WRreg(0x01, 1);
     //en_rx_addr
     TXBuf[0]=0x03;
@@ -44,7 +44,7 @@ void NRF_init(void)
     TXBuf[0]=0x03;
     NRF_WRreg(0x03, 1);
     //setup_retr
-    TXBuf[0]=0x03;
+    TXBuf[0]=0x23;
     NRF_WRreg(0x04, 1);
     //rf_ch
     TXBuf[0]=0x02;
@@ -115,7 +115,7 @@ void NRF_init(void)
     NRF_WRreg(0x1d, 1);
 
     //DYNPD
-    TXBuf[0] = 0;
+    TXBuf[0] = 0x3f;
     NRF_WRreg(0x1c, 1);
 
 
@@ -164,17 +164,17 @@ void NRF_RDreg(unsigned char addr, unsigned char len)
 	unsigned char ind=0;
 	CSN_LOW();
 	status=SPI_txByte(R_REGISTER|(R_REGISTER_DATA&addr));
-//	putChar(0x0a);
-//	putChar(0x0d);
-//	putChar('R');
-//	hex2uart(addr>>4);
-//	hex2uart(addr);
-//	putChar(':');
+	putChar(0x0a);
+	putChar(0x0d);
+	putChar('R');
+	hex2uart(addr>>4);
+	hex2uart(addr);
+	putChar(':');
 	while(ind<len)
 	{
 		RXBuf[ind]=SPI_txByte(NOP);
-//		hex2uart(RXBuf[ind]>>4);
-//		hex2uart(RXBuf[ind]);
+		hex2uart(RXBuf[ind]>>4);
+		hex2uart(RXBuf[ind]);
 		ind++;
 	}
 	CSN_HIGH();
@@ -212,10 +212,10 @@ void NRF_transmit(void)
 	CE_LOW();
 }
 
-void NFR_readRX(void)
+void NRF_readRX(unsigned char pw)
 {
 	CE_LOW();
-	NRF_cmd(R_RX_PAYLOAD,payloadWidth);
+	NRF_cmd(R_RX_PAYLOAD,pw);
 	CE_HIGH();
 }
 

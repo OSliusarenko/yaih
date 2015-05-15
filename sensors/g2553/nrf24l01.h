@@ -13,7 +13,7 @@ unsigned char NRF_rdOneReg(unsigned char addr);
 void NRF_cmd(unsigned char cmd, unsigned char len);
 void NRF_transmit(void);
 unsigned char NRF_status(void);
-void NFR_readRX(void);
+void NRF_readRX(unsigned char pw);
 void NRF_irq_clear_all(void);
 void NRF_flush_rx(void);
 void NRF_flush_tx(void);
