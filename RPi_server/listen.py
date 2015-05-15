@@ -38,7 +38,19 @@ while True:
 
     recv_buffer = []
     radio.read(recv_buffer, radio.getDynamicPayloadSize())
-    print recv_buffer
+    msg = ''
+    if recv_buffer[0] == 0x10:
+        msg = msg + 'sensor_1: '
+    if recv_buffer[3] == 0x0:
+        msg = msg + 'battOK, '
+    else:
+        msg = msg + 'LOWbatt, '
+
+    batt_V = ((recv_buffer[6]<<8 & 0xFF00) + (recv_buffer[7] & 0xFF))* \
+             2.5*2/1023
+
+    msg = msg + '{:f}'.format(batt_V)[:5] + 'V'
+    print msg
     c = c + 1
     if (c&1) == 0:    # queue a return payload every alternate time
         radio.writeAckPayload(1, akpl_buf, len(akpl_buf))
