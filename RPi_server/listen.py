@@ -14,9 +14,9 @@ radio.setDataRate(NRF24.BR_1MBPS)
 radio.setPALevel(NRF24.PA_MAX)
 radio.setAutoAck(False);
 
-#radio.setAutoAck(True)
-#radio.enableDynamicPayloads()
-#radio.enableAckPayload()
+radio.setAutoAck(True)
+radio.enableDynamicPayloads()
+radio.enableAckPayload()
 
 radio.openWritingPipe(pipes[0])
 radio.openReadingPipe(1, pipes[1])
@@ -30,7 +30,7 @@ radio.startListening()
 
 c=1
 while True:
-    akpl_buf = [c,1]
+    akpl_buf = [c, 1]
     pipe = [0]
     # wait for incoming packet from transmitter
     while not radio.available(pipe):
@@ -52,7 +52,6 @@ while True:
     msg = msg + '{:f}'.format(batt_V)[:5] + 'V'
     print msg
     c = c + 1
-    if (c&1) == 0:    # queue a return payload every alternate time
-        radio.writeAckPayload(1, akpl_buf, len(akpl_buf))
+    radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
 
 
