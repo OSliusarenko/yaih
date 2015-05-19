@@ -29,29 +29,38 @@ radio.printDetails()
 radio.startListening()
 
 c=1
-while True:
-    akpl_buf = [c, 1]
-    pipe = [0]
-    # wait for incoming packet from transmitter
-    while not radio.available(pipe):
-        time.sleep(10000/1000000.0)
+with open('sensor.dat', 'w+') as f:
+    while True:
+        akpl_buf = [c, 1]
+        pipe = [0]
+        # wait for incoming packet from transmitter
+        while not radio.available(pipe):
+            time.sleep(10000/1000000.0)
 
-    recv_buffer = []
-    radio.read(recv_buffer, radio.getDynamicPayloadSize())
-    msg = ''
-    if recv_buffer[0] == 0x10:
-        msg = msg + 'sensor_1: '
-    if recv_buffer[3] == 0x0:
-        msg = msg + 'battOK, '
-    else:
-        msg = msg + 'LOWbatt, '
+        recv_buffer = []
+        radio.read(recv_buffer, radio.getDynamicPayloadSize())
+        msg = ''
+        if recv_buffer[0] == 0x10:
+            msg = msg + 'sensor_1: '
+        if recv_buffer[3] == 0x0:
+            msg = msg + 'battOK, '
+        else:
+            msg = msg + 'LOWbatt, '
 
-    batt_V = ((recv_buffer[6]<<8 & 0xFF00) + (recv_buffer[7] & 0xFF))* \
+        batt_V = ((recv_buffer[6]<<8 & 0xFF00) + (recv_buffer[7] & 0xFF))* \
              2.5*2/1023
+        temperature = ((recv_buffer[4]<<8 & 0xFF00) 
+             + (recv_buffer[5] & 0xFF) - 673)*422.5/1024
 
-    msg = msg + '{:f}'.format(batt_V)[:5] + 'V'
-    print msg
-    c = c + 1
-    radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
+        msg = msg + '{:.2f}'.format(batt_V) + 'V '
+        msg = msg + '{:.1f}'.format(temperature) + 'C'
+        print msg
+
+        f.write(str(time.time()) + '\t' + str(batt_V) + 
+                '\t' + str(temperature) + '\n')
+        f.flush()	
+    
+        c = c + 1
+        radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
 
 

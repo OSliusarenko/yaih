@@ -17,7 +17,7 @@
 #define TPWRPortDIR P2DIR
 
 // 1 = 4 sec
-#define deepSleepTime               1
+#define deepSleepTime               15
 #define deepSleepTimeLowBatt        255
 #define LowBattADC                  0x1c0
 

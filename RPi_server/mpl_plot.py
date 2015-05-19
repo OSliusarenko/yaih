@@ -98,7 +98,7 @@ class ImgHandler(tornado.web.RequestHandler):
         with open('sensor_1.dat', 'r') as f:
             for line in f:
                 t = int(float(line.split('\t')[0]))
-                s = float(line.split('\t')[1])
+                s = float(line.split('\t')[2])
                 if ct - t < t_shift:
                     data.append([t, s])
                                    
@@ -168,5 +168,5 @@ application = tornado.web.Application([
   ])
 
 if __name__ == "__main__":
-  application.listen(8080)
+  application.listen(8888)
   tornado.ioloop.IOLoop.instance().start()
