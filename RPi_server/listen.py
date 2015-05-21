@@ -29,7 +29,7 @@ radio.printDetails()
 radio.startListening()
 
 c=1
-with open('sensor.dat', 'w+') as f:
+with open('sensor_1.dat', 'a') as f:
     while True:
         akpl_buf = [c, 1]
         pipe = [0]
@@ -49,11 +49,13 @@ with open('sensor.dat', 'w+') as f:
 
         batt_V = ((recv_buffer[6]<<8 & 0xFF00) + (recv_buffer[7] & 0xFF))* \
              2.5*2/1023
+#        temperature = ((recv_buffer[4]<<8 & 0xFF00) 
+#             + (recv_buffer[5] & 0xFF) - 673)*422.5/1024
         temperature = ((recv_buffer[4]<<8 & 0xFF00) 
-             + (recv_buffer[5] & 0xFF) - 673)*422.5/1024
+             + (recv_buffer[5] & 0xFF))*1.5/1024
 
-        msg = msg + '{:.2f}'.format(batt_V) + 'V '
-        msg = msg + '{:.1f}'.format(temperature) + 'C'
+        msg = msg + '{:.5f}'.format(batt_V) + 'V '
+        msg = msg + '{:.5f}'.format(temperature) + 'V'
         print msg
 
         f.write(str(time.time()) + '\t' + str(batt_V) + 
