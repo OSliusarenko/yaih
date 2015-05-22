@@ -4,6 +4,8 @@ import tornado.web
 import matplotlib
 matplotlib.use('Agg')
 
+from mpl_toolkits.axes_grid1 import host_subplot
+import mpl_toolkits.axisartist as AA
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -98,12 +100,11 @@ class ImgHandler(tornado.web.RequestHandler):
         with open('sensor_1.dat', 'r') as f:
             for line in f:
                 t = int(float(line.split('\t')[0]))
-                s = float(line.split('\t')[2])
+                v = float(line.split('\t')[1])
+                s = (float(line.split('\t')[2])-0.986)/0.00355
                 if ct - t < t_shift:
-                    data.append([t, s])
+                    data.append([t, v, s])
                                    
-        plt.rcParams['figure.figsize'] = (8.0,4.0)
-
         if len(data) > plotpoints: # avoid plotting too much points
             delta_data = int(np.ceil(len(data)/(plotpoints - 1)))
             new_data = data[::delta_data]
@@ -111,7 +112,8 @@ class ImgHandler(tornado.web.RequestHandler):
             new_data = data
             
         x = [d[0] for d in new_data]
-        y = [d[1] for d in new_data]
+        yv = [d[1] for d in new_data]
+        ys = [d[2] for d in new_data]
             
         t_start = datetime.datetime.fromtimestamp(x[0])
         t_end = datetime.datetime.today()
@@ -145,13 +147,38 @@ class ImgHandler(tornado.web.RequestHandler):
             xpticks = [i for i in xpticks if i <= t_end + t_delta]
             xvticks = ['{:%Y}'.format(i) for i in xpticks] 
         xpticks = [time.mktime(i.timetuple()) for i in xpticks]
-       
-        plt.title('Data for ' + '{:%Y-%m-%d}'.format(t_start) + 
-                        ' - ' + '{:%Y-%m-%d}'.format(t_end))
-        plt.plot(x, y, 'm-', linewidth=1.5, label='sensor_1') 
-        plt.xticks(xpticks, xvticks)
-        plt.legend(loc=1)
-        plt.xlim([x[0], x[-1]])
+        
+        with plt.style.context('fivethirtyeight'):
+            plt.rcParams['figure.figsize'] = (8.0,4.0)
+            plt.rcParams['figure.autolayout'] = True
+            host = host_subplot(111, axes_class=AA.Axes)
+            
+            plt.subplots_adjust(right=0.9)
+            
+            par1 = host.twinx()
+
+            host.set_xlim(x[0], x[-1])
+            par1.set_xlim(x[0], x[-1])
+
+            plt.title('Data for ' + '{:%Y-%m-%d}'.format(t_start) +
+                      ' - ' + '{:%Y-%m-%d}'.format(t_end))
+
+            host.set_xlabel("time")
+            host.set_ylabel("Batt voltage")
+            par1.set_ylabel("Temperature")
+
+            p1, = host.plot(x, yv, 'm-', linewidth=1.5, label='voltage')
+            p2, = par1.plot(x, ys, 'b-', linewidth=1.5, label='temperature')
+
+
+            host.axis["left"].label.set_color(p1.get_color())
+            par1.axis["right"].label.set_color(p2.get_color())
+            host.set_xticks(xpticks, xvticks)
+            par1.set_xticks(xpticks, xvticks)
+#            host.legend(loc=1)
+
+            plt.xticks(xpticks, xvticks)
+            plt.draw()
             
         io = StringIO()
         plt.savefig(io, format='svg')
