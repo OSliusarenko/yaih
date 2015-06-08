@@ -58,8 +58,16 @@ void main(void) {
         ADC10CTL0=0x0;
         batt_v = ADC10MEM;
         //get temperature
-        ADC10CTL1 = INCH_10; // Temp Sensor ADC10CLK/4
+        ADC10CTL1 = ADC10DIV_3 + INCH_10; // Temp Sensor ADC10CLK/4
         ADC10CTL0 = SREF_1 + ADC10SHT_3 + REFON + ADC10ON + ADC10IE;
+        
+        __enable_interrupt();                     // Enable interrupts.
+        TACCR0 = 30;                              // Delay to allow Ref to settle
+        TACCTL0 |= CCIE;                          // Compare-mode interrupt.
+        TACTL = TASSEL_2 | MC_1;                  // TACLK = SMCLK, Up mode.
+        LPM0;                                     // Wait for delay.
+        __disable_interrupt();
+        
         ADC10CTL0 |= ENC + ADC10SC;             // Sampling and conversion start
         __bis_SR_register(CPUOFF + GIE);        // LPM0, ADC10_ISR will force exit
         ADC10CTL0=0x0;
@@ -150,8 +158,6 @@ void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
         _BIC_SR_IRQ(LPM3_bits);                   // Clear LPM3 bits from 0(SR)
     }
 }
-
-
 
 
 void deepSleep(unsigned char dsCnt)
