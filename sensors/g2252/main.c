@@ -6,7 +6,7 @@
 #define defaultRX           0
 #define payloadWidth        8
 #define myIdHigh            0x10
-#define myIdLow             0x01
+#define myIdLow             0xFF
 #define opCode1             0X01
 
 #define status_OK           0X00
@@ -44,8 +44,7 @@ void main(void) {
     {
         IO_init();
         
-        P1OUT |=LED0;
-//        while(1);
+        P1OUT |= LED0;
         //get voltage
         ADC10CTL1 = INCH_11;                      // AVcc/2
         ADC10CTL0 = SREF_1 + ADC10SHT_2 + REFON + REF2_5V + ADC10ON + ADC10IE;
@@ -54,8 +53,11 @@ void main(void) {
         ADC10CTL0=0x0;
         batt_v = ADC10MEM;
         //get temperature
-        ADC10CTL1 = INCH_10; // Temp Sensor ADC10CLK/4
+        ADC10CTL1 = ADC10DIV_3 + INCH_10; // Temp Sensor ADC10CLK/4
         ADC10CTL0 = SREF_1 + ADC10SHT_3 + REFON + ADC10ON + ADC10IE;
+        
+        delay_10us(3);
+         
         ADC10CTL0 |= ENC + ADC10SC;             // Sampling and conversion start
         __bis_SR_register(CPUOFF + GIE);        // LPM0, ADC10_ISR will force exit
         ADC10CTL0=0x0;
@@ -65,7 +67,7 @@ void main(void) {
 
         TXBuf[0]=myIdHigh;
         TXBuf[1]=myIdLow;
-        TXBuf[2]=opCode1;
+//        TXBuf[2]=opCode1;
         if (batt_v>LowBattADC)
         {
             TXBuf[3]=status_OK;
