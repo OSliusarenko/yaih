@@ -1,0 +1,4 @@
+#!/bin/bash
+rm a.elf
+msp430-gcc -Os -mmcu=msp430g2252 -o a.elf main.c
+msp430-size a.elf
