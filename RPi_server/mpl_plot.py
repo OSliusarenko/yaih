@@ -101,7 +101,7 @@ class ImgHandler(tornado.web.RequestHandler):
             for line in f:
                 t = int(float(line.split('\t')[0]))
                 v = float(line.split('\t')[1])
-                s = (float(line.split('\t')[2])-0.986)/0.00355
+                s = float(line.split('\t')[2])
                 if ct - t < t_shift:
                     data.append([t, v, s])
                                    

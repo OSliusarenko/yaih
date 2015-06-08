@@ -40,27 +40,20 @@ with open('sensor_1.dat', 'a') as f:
         recv_buffer = []
         radio.read(recv_buffer, radio.getDynamicPayloadSize())
         msg = ''
-        if recv_buffer[0] == 0x10:
-            msg = msg + 'sensor_1: '
-        if recv_buffer[3] == 0x0:
-            msg = msg + 'battOK, '
-        else:
-            msg = msg + 'LOWbatt, '
+        if recv_buffer[0]==0x10 and recv_buffer[1]==0xFF:   
+            batt_V = ((recv_buffer[6]<<8 & 0xFF00) 
+                    + (recv_buffer[7] & 0xFF))
+            temperature = ((recv_buffer[4]<<8 & 0xFF00) 
+                         + (recv_buffer[5] & 0xFF))
 
-        batt_V = ((recv_buffer[6]<<8 & 0xFF00) + (recv_buffer[7] & 0xFF))* \
-             2.5*2/1023
-        temperature = ((recv_buffer[4]<<8 & 0xFF00) 
-             + (recv_buffer[5] & 0xFF) - 673)*422.5/1024
-#        temperature = ((recv_buffer[4]<<8 & 0xFF00) 
-#             + (recv_buffer[5] & 0xFF))*1.5/1024
+            msg = msg + '{:.3f}'.format(batt_V*2.5*2/1023-0.1) + '\t'
+            msg = msg + '{:.3f}'.format(temperature*1500/1023/3.55-267)
+            msg = msg + '\n'
+          
+            print msg,
 
-        msg = msg + '{:.5f}'.format(batt_V) + 'V '
-        msg = msg + '{:.5f}'.format(temperature) + 'C'
-        print msg
-
-        f.write(str(time.time()) + '\t' + str(batt_V) + 
-                '\t' + str(temperature) + '\n')
-        f.flush()	
+            f.write(str(time.time()) + '\t' + msg)
+#            f.flush()	
     
         c = c + 1
         radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
