@@ -44,13 +44,13 @@ void NRF_init(void)
     TXBuf[0]=0x03;
     NRF_WRreg(0x03, 1);
     //setup_retr
-    TXBuf[0]=0x23;
+    TXBuf[0]=0x3f;
     NRF_WRreg(0x04, 1);
     //rf_ch
-    TXBuf[0]=0x02;
+    TXBuf[0]=85;
     NRF_WRreg(0x05, 1);
     //rf_setup
-    TXBuf[0]=0b111;
+    TXBuf[0]=0b111; // 1Mbps max pwr hi-gain LNA
     NRF_WRreg(0x06, 1);
     //rx_addr_p0
     TXBuf[0] = 0xe7;

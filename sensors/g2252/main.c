@@ -137,7 +137,7 @@ void __attribute__ ((interrupt(ADC10_VECTOR))) ADC10_ISR (void)
 void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
 {
     //P1OUT ^=LED0;
-    if(++deepSleepCnt > deepSleepTimer)
+    if(++deepSleepCnt >= deepSleepTimer)
     {
         _BIC_SR_IRQ(LPM3_bits);                   // Clear LPM3 bits from 0(SR)
     }
@@ -159,7 +159,7 @@ void deepSleep(unsigned char dsCnt)
     deepSleepTimer=dsCnt;
     IE1 = WDTIE;                             // Enable WDT interrupt
     _BIS_SR(LPM3_bits + GIE);               // Enter LPM3
-    WDTCTL=0;
+    WDTCTL = WDTPW + WDTHOLD;
 }
 
 void sleepDelay(unsigned int cnt)
