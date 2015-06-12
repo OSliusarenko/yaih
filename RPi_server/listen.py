@@ -6,10 +6,10 @@ pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7], [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
 radio = NRF24()
 radio.begin(0, 0, 17)
 
-radio.setRetries(0,3)
+radio.setRetries(0x3,0xf)
 
 radio.setPayloadSize(8)
-radio.setChannel(0x02)
+radio.setChannel(85)
 radio.setDataRate(NRF24.BR_1MBPS)
 radio.setPALevel(NRF24.PA_MAX)
 radio.setAutoAck(False);
@@ -50,10 +50,13 @@ with open('sensor_1.dat', 'a') as f:
             msg = msg + '{:.3f}'.format(temperature*1500/1023/3.55-267)
             msg = msg + '\n'
           
-            print msg,
+            tnow = time.localtime()
+            print str(tnow.tm_hour) + ':' +\
+                  str(tnow.tm_min) + ':' +\
+                  str(tnow.tm_sec) +  ' ' + msg,
 
             f.write(str(time.time()) + '\t' + msg)
-#            f.flush()	
+            f.flush()	
     
         c = c + 1
         radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
