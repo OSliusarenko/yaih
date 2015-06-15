@@ -13,70 +13,12 @@ import datetime
 import numpy as np
 from io import StringIO, BytesIO
 
-html_content = """
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-
-  <html>
-<head>
-    <title>Sensors Plot</title>
-    <script language="JavaScript">
-<!--
-
-function Start() {
-    var e = document.getElementById("ddlViewBy");
-    var strUser = e.options[e.selectedIndex].value;
-
-    var inp = document.getElementsByName('r');
-    var i = 0;
-    for (i = 0; i < inp.length; i++) {
-        if (inp[i].type == "radio" && inp[i].checked) {
-            break;
-        }
-    }
-
-    //alert(strUser + " " + inp[i].value);
-    
-    window.location = "img/" + strUser;
-}
-
-//-->
-</script>
-</head>
-
-<body text="#000000"  bgcolor="#FFFeea">
-<p align="center">
-<b>Select what to plot</b> <br> <br>
-</p>
-<hr width="50%">
-<p align="center">
-plot recent:
-<select id="ddlViewBy">
-  <option value="day" selected="selected">day</option>
-  <option value="week">week</option>
-  <option value="month">month</option>
-  <option value="year">year</option>
-  <option value="all-time">all-time</option>
-</select>
-
-<br>
-
-<input type="radio" name="r" value='1'>sensor #1<br> 
-<input type="radio" name="r" value='2'>sensor #2<br>
-<input type="radio" name="r" value='0' checked="checked">all sensors<br>
-
-<br><br>
-<input type="button" value=" Start " onclick="Start();">
-</p>
-
-
-
-</body>
-</html>
-"""
-
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.write(html_content)
+        with open('sensor_1.dat', 'r') as f:
+            line = f.readlines()[-1]
+        curr_temperature = '{:.1f}'.format(float(line.split('\t')[-1]))
+        self.render("template.html", curr_temperature=curr_temperature)
 
 class ImgHandler(tornado.web.RequestHandler):
     def get(self, arg=1):
