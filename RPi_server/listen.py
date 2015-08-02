@@ -1,6 +1,9 @@
 from nrf24 import NRF24
 import time
 
+def strToListOfInt(msg):
+    return [ord(c) for c in msg]
+
 pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7], [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
 
 radio = NRF24()
@@ -29,9 +32,11 @@ radio.printDetails()
 radio.startListening()
 
 c=1
+
+akpl_buf= strToListOfInt('Hello my dear! I\'ve got something for you')
+
 with open('sensor_1.dat', 'a') as f:
     while True:
-        akpl_buf = [c, 1]
         pipe = [0]
         # wait for incoming packet from transmitter
         while not radio.available(pipe):
@@ -40,6 +45,7 @@ with open('sensor_1.dat', 'a') as f:
         recv_buffer = []
         radio.read(recv_buffer, radio.getDynamicPayloadSize())
         msg = ''
+
         if recv_buffer[0]==0x10 and recv_buffer[1]==0xFF:   
             batt_V = ((recv_buffer[6]<<8 & 0xFF00) 
                     + (recv_buffer[7] & 0xFF))
@@ -57,7 +63,13 @@ with open('sensor_1.dat', 'a') as f:
 
             f.write(str(time.time()) + '\t' + msg)
             f.flush()	
-    
+
+        if recv_buffer[0]==0x10 and recv_buffer[1]==0x00:   
+            msg = msg + str(recv_buffer[3])
+            msg = msg + '\n'
+          
+            print msg,
+
         c = c + 1
         radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
 
