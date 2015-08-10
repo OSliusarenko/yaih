@@ -7,7 +7,7 @@ def strToListOfInt(msg):
 pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7], [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
 
 radio = NRF24()
-radio.begin(0, 0, 17)
+radio.begin(0, 0, 22)
 
 radio.setRetries(0,0xf)
 
@@ -32,8 +32,6 @@ radio.printDetails()
 radio.startListening()
 
 c=1
-
-akpl_buf= strToListOfInt('Hello my dear! I\'ve got something for you')
 
 with open('sensor_1.dat', 'a') as f:
     while True:
@@ -65,12 +63,8 @@ with open('sensor_1.dat', 'a') as f:
             f.flush()	
 
         if recv_buffer[0]==0x10 and recv_buffer[1]==0x00:   
-            msg = msg + str(recv_buffer[3])
-            msg = msg + '\n'
-          
-            print msg,
-
-        c = c + 1
-        radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
+            tnow = time.localtime()
+            akpl_buf = [tnow.tm_hour, tnow.tm_min, tnow.tm_sec]
+            radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
 
 

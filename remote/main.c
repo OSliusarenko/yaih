@@ -14,7 +14,7 @@ void showTemp();
 char waitNRF();
 void isThereTemperatureReady();
 
-volatile unsigned char ack_pw;
+volatile unsigned char ack_pw, temp_timer;
 volatile unsigned char sec_al=0, min_al=0, hrs_al=0, mint, hrst;
 volatile int temperature;
 volatile _Bool defaultRX, alarm_set=0;
@@ -170,6 +170,7 @@ void main(void) {
     hrs=RXBuf[0]; min=RXBuf[1]; sec=RXBuf[2];
 
     defaultRX = 1;
+    temp_timer = 255; // 255 sec for retries
     NRF_init(); // start listening for temperature info
     
     while(1)
@@ -182,12 +183,16 @@ void main(void) {
             if(hrs==hrs_al && min==min_al && sec==sec_al)
             {
                 defaultRX = 1;
+                temp_timer = 15; // 15 sec for retries
                 NRF_init(); // start listening again
                 alarm_set = 0;
             };
         }else
         {
-            isThereTemperatureReady();
+            if(--temp_timer>0)
+            {
+                isThereTemperatureReady();
+            } else NRF_down();
         };
 
         delay_sec(1);
