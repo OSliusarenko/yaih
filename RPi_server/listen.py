@@ -6,6 +6,10 @@ def strToListOfInt(msg):
 
 pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7], [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
 
+myId = 0x10
+remoteId = 0x00
+thermoId = 0xff
+
 radio = NRF24()
 radio.begin(0, 0, 17)
 
@@ -46,7 +50,7 @@ with open('sensor_1.dat', 'a') as f:
         radio.read(recv_buffer, radio.getDynamicPayloadSize())
         msg = ''
 
-        if recv_buffer[0]==0x10 and recv_buffer[1]==0xFF:   
+        if recv_buffer[0]==myId and recv_buffer[1]==thermoId:   
             batt_V = ((recv_buffer[6]<<8 & 0xFF00) 
                     + (recv_buffer[7] & 0xFF))
             temperature = ((recv_buffer[4]<<8 & 0xFF00) 
@@ -64,13 +68,17 @@ with open('sensor_1.dat', 'a') as f:
             f.write(str(time.time()) + '\t' + msg)
             f.flush()	
 
-        if recv_buffer[0]==0x10 and recv_buffer[1]==0x00:   
-            msg = msg + str(recv_buffer[3])
-            msg = msg + '\n'
-          
-            print msg,
+        if recv_buffer[0]==myId and recv_buffer[1]==remoteId:
+            print 'remote'   
+            if recv_buffer[2]==ord('g') and recv_buffer[3]==ord('t'):
+                print 'Sending time...'
+                tm = time.localtime(time.time())
+                akpl_buf=[tm.tm_hour, tm.tm_min, tm.tm_sec]
+                print akpl_buf
+                radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
+                          
 
         c = c + 1
-        radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
+#        radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
 
 
