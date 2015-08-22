@@ -11,7 +11,7 @@ void NRF_WRreg(unsigned char addr, unsigned char val);
 void NRF_RDreg(unsigned char addr, unsigned char len);
 unsigned char NRF_rdOneReg(unsigned char addr);
 void NRF_cmd(unsigned char cmd, unsigned char len);
-void NRF_transmit(void);
+void NRF_transmit(unsigned char);
 unsigned char NRF_status(void);
 void NRF_readRX(unsigned char pw);
 void NRF_irq_clear_all(void);
@@ -21,6 +21,9 @@ void NRF_2RX(void);
 void NRF_2TX(void);
 void NRF_up(void);
 void NRF_down(void);
+char waitNRF();
+char NRF_broadcast_str(char* msg, char length);
+char NRF_broadcast_char(unsigned char);
 
 volatile unsigned char TXBuf[32];
 volatile unsigned char RXBuf[32];

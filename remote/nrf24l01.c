@@ -87,11 +87,11 @@ void NRF_init(void)
     NRF_WRreg(0x10, 5);
 
     //rx_payload_width_p0
-    TXBuf[0] = payloadWidth;
+    TXBuf[0] = 8;
     NRF_WRreg(0x11, 1);
 
     //rx_payload_width_p1
-    TXBuf[0] = payloadWidth;
+    TXBuf[0] = 8;
     NRF_WRreg(0x12, 1);
 
     //rx_payload_width_p2
@@ -196,15 +196,16 @@ void NRF_cmd(unsigned char cmd, unsigned char len)
 		ind++;
 	}
 	CSN_HIGH();
+    __delay_cycles(1000); // check out this value !!!
 }
 
-void NRF_transmit(void)
+void NRF_transmit(unsigned char payloadWidth)
 {
-    NRF_cmd(W_TX_PAYLOAD, payloadWidth);   
+    unsigned char stat;
+    NRF_cmd(W_TX_PAYLOAD, payloadWidth);  
 	CE_HIGH();
 	delay_10us(3);
 	CE_LOW();
-    while(!waitNRF());
 }
 
 void NRF_readRX(unsigned char pw)
@@ -277,4 +278,52 @@ void NRF_down(void)
 	CE_LOW();
 }
 
+char waitNRF()
+{
+    unsigned char tmp=NRF_status();
+      
+    if(tmp & STATUS_RX_DR)
+    {
+        TXBuf[0] = 0xFF; // NRF's NOP
+        NRF_cmd(0x60, 1); // get dyn payload width
+        ack_pw = RXBuf[0];
+        NRF_readRX(ack_pw);
+        
+        NRF_flush_rx();
+        return 1;
+    }    
+    if(tmp & STATUS_TX_DS)
+    {
+        NRF_flush_tx();
+        return 2;
+    }
+    if(tmp & STATUS_MAX_RT)
+    {
+        NRF_flush_tx();
+        NRF_flush_rx();
+        return 3;
+    }
+    return 0;
+};
 
+char NRF_broadcast_str(char* msg, char length)
+{
+    unsigned char c, l=32;
+    
+    if (l>length) l = length;
+    
+    for (c=0; c<l; c++) TXBuf[c] = msg[c];
+
+    NRF_transmit(l);
+    
+    return 0;
+};
+
+char NRF_broadcast_char(unsigned char cc)
+{
+    TXBuf[0] = cc;
+
+    NRF_transmit(1);
+
+    return 0;
+}

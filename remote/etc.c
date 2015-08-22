@@ -3,9 +3,9 @@
 void IO_init(void);
 void delay (unsigned long a);
 void delay_10us (unsigned int a);
-void delay_sec (unsigned int a);
+void delay_sec (unsigned char a);
 
-volatile unsigned char sec=0, min=0, hrs=0;
+volatile unsigned char sec=0, min=0, hrs=0, delaysec_cnt=0xff;
 
 void IO_init(void)
 {
@@ -30,19 +30,19 @@ void delay_10us (unsigned int a)
 	__bis_SR_register(LPM0_bits + GIE);
 }
 
-void delay_sec (unsigned int a)
+void delay_sec (unsigned char a)
 {
-	CCR0 = 4096*a;
-	TACTL = TASSEL_1 + MC_1 + ID_3;                  // ACLK, upmode, /8
-	CCTL0 = CCIE;                             // CCR0 interrupt enabled
-	__bis_SR_register(LPM0_bits + GIE);
+    if (a>60) a = 60;
+    delaysec_cnt = sec + a;
+    if (delaysec_cnt>59) delaysec_cnt -= 59;
+	__bis_SR_register(LPM3_bits + GIE);
 }
 
 void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) ta0_isr(void)
 {
   TACTL = 0;
   CCTL0 &= ~CCIE;
-  LPM0_EXIT;
+  LPM0_EXIT; 
 }
 
 void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
@@ -56,6 +56,13 @@ void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
             if (++hrs > 23) hrs = 0;
         };
     };
-//    _BIC_SR_IRQ(LPM3_bits);                   // Clear LPM3 bits from 0(SR)
+    
+    if(sec==delaysec_cnt)
+    {
+        delaysec_cnt=0xff;
+
+        _BIC_SR_IRQ(LPM3_bits);           // Clear LPM0 bits from 0(SR) 
+    };
+
 }
 

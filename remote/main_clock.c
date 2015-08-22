@@ -7,18 +7,7 @@
 #define BTN_LEFT 3
 #define BTN_RIGHT 2
 
-#define RMT_NOP 0x00 // wait reply
-#define RMT_TEST 0x01 // test signal (should receive ack 'ok' after)
-#define RMT_OK 0x02 // 'ok' response, also end-of-session
-#define RMT_BTN_BACK 0x03
-#define RMT_BTN_OK 0x04
-#define RMT_BTN_UP 0x05
-#define RMT_BTN_DOWN 0x06
-#define RMT_BTN_LEFT 0x07
-#define RMT_BTN_RIGHT 0x08
-
-
-
+#define payloadWidth        8
 #define myId            0x10
 #define remoteId        0x00
 #define thermoId             0xFF
@@ -29,9 +18,9 @@ void syncTime();
 void showTime();
 void getTemp();
 void showTemp();
+char waitNRF();
 void isThereTemperatureReady();
 void initKeyboard();
-char rmtSendComm(unsigned char comm);
 
 volatile unsigned char ack_pw, temp_timer, btn_pressed=0xf;
 volatile unsigned char sec_al=0, min_al=0, hrs_al=0, mint, hrst;
@@ -63,12 +52,12 @@ void syncTime()
     TXBuf[2]='g';
     TXBuf[3]='t';
     
-    NRF_transmit(4);
+    NRF_transmit();
 
     NRF_down();
     delay_sec(1); 
     NRF_up();     
-    NRF_transmit(4);
+    NRF_transmit();
     NRF_down();
 };
 
@@ -129,7 +118,35 @@ void isThereTemperatureReady()
     };
 };
 
-
+char waitNRF()
+{
+    unsigned char tmp=NRF_status();
+      
+    if(tmp & STATUS_RX_DR)
+    {
+        TXBuf[0] = 0xFF; // NRF's NOP
+        NRF_cmd(0x60, 1); // get dyn payload width
+        ack_pw = RXBuf[0];
+        NRF_readRX(ack_pw);
+        
+        NRF_flush_rx();
+        if(defaultRX) return 1;
+    }    
+    if(tmp & STATUS_TX_DS)
+    {
+        NRF_flush_tx();
+        return 2;
+    }
+    if(tmp & STATUS_MAX_RT)
+    {
+        clearBank(1);
+        writeStringToLCD("max_ret");
+        NRF_flush_tx();
+        NRF_flush_rx();
+        return 3;
+    }
+    return 0;
+};
 
 void initKeyboard()
 {
@@ -189,40 +206,12 @@ void __attribute__ ((interrupt(PORT2_VECTOR))) P2_ISR (void)
     }
 } //P2_ISR
 
-char rmtSendComm(unsigned char comm){
-    unsigned char st;
-    
-    defaultRX = 0;  
-    NRF_init();  
-    
-    NRF_irq_clear_all();
-    NRF_broadcast_char(comm); // send command
-    while (1)
-    {
-        st = waitNRF(); 
-        if(st==1) // we got a reply!
-        {
-            if(ack_pw==1 && RXBuf[0]==RMT_OK) break; // end-of-session
-        };
-        if(st==2) //sent successfully, no ack yet
-        {
-            NRF_irq_clear_all();
-            NRF_broadcast_char(RMT_NOP); // send nop, wait ack
-        };
-        if (st==3) break;
-    };     
-    
-    NRF_down(); 
-    
-    return st;
-};
-
 
 
 
 void main(void) {
     
-
+    unsigned char ci;
     int i;
         
     WDTCTL = WDTPW + WDTHOLD; // disable WDT
@@ -252,35 +241,59 @@ void main(void) {
     initKeyboard();
     // end init
 
-    //syncTime(); //getting time
-    //hrs=RXBuf[0]; min=RXBuf[1]; sec=RXBuf[2];
+    syncTime(); //getting time
+    hrs=RXBuf[0]; min=RXBuf[1]; sec=RXBuf[2];
 
-    while(1) // main loop
-    {
+    defaultRX = 1;
+    temp_timer = 255; // 255 sec for retries
+    NRF_init(); // start listening for temperature info
+    
+    while(1)
+    {   
+        if(show_mode)
+        {
+            setAddr(0, 0);
+            showTime();
+        };
+         
         if(btn_pressed!=0xf) {
             if(btn_pressed==BTN_BACK)
-            {
-                rmtSendComm(RMT_TEST);
-            };
-            if(btn_pressed==BTN_OK)
             {
                 show_mode = !show_mode;
                 if(show_mode) 
                 {
                     initLCD();
+                    setAddr(0, 1);
+                    showTemp();
                 }
                 else LCDoff();
             };
-
+            if(btn_pressed==BTN_OK)
+            {
+                backlight = !backlight;
+                if(backlight) backlightOn();
+                else backlightOff();
+            };
             btn_pressed = 0xf;
         };
         
-        if(show_mode) 
+        if(alarm_set)
         {
-            setAddr(0, 0);
-            showTime();
+            if(hrs==hrs_al && min==min_al && sec==sec_al)
+            {
+                defaultRX = 1;
+                temp_timer = 15; // 15 sec for retries
+                NRF_init(); // start listening again
+                alarm_set = 0;
+            };
+        }else
+        {
+            if(--temp_timer>0)
+            {
+                isThereTemperatureReady();
+            } else NRF_down();
         };
-           
+
         delay_sec(1);
     };
 
