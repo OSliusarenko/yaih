@@ -27,7 +27,7 @@ char NRF_broadcast_char(unsigned char);
 
 volatile unsigned char TXBuf[32];
 volatile unsigned char RXBuf[32];
-volatile unsigned char status;
+volatile unsigned char status, ack_pw;
 
 
 // PINS

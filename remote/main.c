@@ -10,6 +10,7 @@
 #define RMT_NOP 0x00 // wait reply
 #define RMT_TEST 0x01 // test signal (should receive ack 'ok' after)
 #define RMT_OK 0x02 // 'ok' response, also end-of-session
+#define RMT_GET_PLAYING 0x10 // get song info from server 
 #define RMT_BTN_BACK 0x03
 #define RMT_BTN_OK 0x04
 #define RMT_BTN_UP 0x05
@@ -33,10 +34,11 @@ void isThereTemperatureReady();
 void initKeyboard();
 char rmtSendComm(unsigned char comm);
 
-volatile unsigned char ack_pw, temp_timer, btn_pressed=0xf;
+volatile unsigned char temp_timer, btn_pressed=0xf;
 volatile unsigned char sec_al=0, min_al=0, hrs_al=0, mint, hrst;
 volatile int temperature;
 volatile _Bool defaultRX, alarm_set=0, show_mode=1, backlight=0;
+volatile _Bool playmode=0;
 
 #include "msp430g2553.h"
 #include "PCD8544.c"
@@ -190,7 +192,7 @@ void __attribute__ ((interrupt(PORT2_VECTOR))) P2_ISR (void)
 } //P2_ISR
 
 char rmtSendComm(unsigned char comm){
-    unsigned char st;
+    unsigned char st, i;
     
     defaultRX = 0;  
     NRF_init();  
@@ -203,6 +205,16 @@ char rmtSendComm(unsigned char comm){
         if(st==1) // we got a reply!
         {
             if(ack_pw==1 && RXBuf[0]==RMT_OK) break; // end-of-session
+            // show ack payload on screen
+            else if(show_mode) 
+            {
+                clearLCD();
+                setAddr(0, 1);
+                for(i=0; i<ack_pw; i++)
+                    writeCharToLCD(RXBuf[i]);
+                
+                break; //!!!
+            };
         };
         if(st==2) //sent successfully, no ack yet
         {
@@ -260,9 +272,31 @@ void main(void) {
         if(btn_pressed!=0xf) {
             if(btn_pressed==BTN_BACK)
             {
-                rmtSendComm(RMT_TEST);
+                rmtSendComm(RMT_BTN_BACK);
+                playmode = 0;
             };
             if(btn_pressed==BTN_OK)
+            {
+                rmtSendComm(RMT_BTN_OK);
+                playmode = 1;
+            };
+            if(btn_pressed==BTN_LEFT)
+            {
+                rmtSendComm(RMT_BTN_LEFT);
+            };
+            if(btn_pressed==BTN_RIGHT)
+            {
+                rmtSendComm(RMT_BTN_RIGHT);
+            };
+            if(btn_pressed==BTN_UP)
+            {
+                rmtSendComm(RMT_BTN_UP);
+            };
+            if(btn_pressed==BTN_DOWN)
+            {
+                rmtSendComm(RMT_BTN_DOWN);
+            };
+/*            if(btn_pressed==BTN_OK)
             {
                 show_mode = !show_mode;
                 if(show_mode) 
@@ -271,17 +305,22 @@ void main(void) {
                 }
                 else LCDoff();
             };
+*/
 
             btn_pressed = 0xf;
         };
         
-        if(show_mode) 
+/*        if(show_mode) 
         {
             setAddr(0, 0);
             showTime();
         };
-           
+*/        
+        if (playmode) rmtSendComm(RMT_GET_PLAYING);   
+        
         delay_sec(1);
+        
+        
     };
 
 }
