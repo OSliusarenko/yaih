@@ -29,15 +29,15 @@ class ImgHandler(tornado.web.RequestHandler):
         data = []
         
         if arg == 'day':
-            t_shift = 86400
+            t_shift = datetime.timedelta(days=1).total_seconds()
         elif arg == 'week':
-            t_shift = 604800
+            t_shift = datetime.timedelta(days=7).total_seconds()
         elif arg == 'month':
-            t_shift = 2678400
+            t_shift = datetime.timedelta(days=30).total_seconds()
         elif arg == 'year':
-            t_shift = 31536000
+            t_shift = datetime.timedelta(days=365).total_seconds()
         elif arg == 'all-time':
-            t_shift = 315360000
+            t_shift = datetime.timedelta(days=3650).total_seconds()
         
         with open('sensor_1.dat', 'r') as f:
             for line in f:
@@ -63,18 +63,20 @@ class ImgHandler(tornado.web.RequestHandler):
         if arg == 'day':
             t_delta = datetime.timedelta(hours=3) 
             xpticks = [t_start +i*t_delta for i in xrange(9)]
+            xpticks = [i.replace(minute=00) for i in xpticks]
             xvticks = ['{:%H:%M}'.format(i) for i in xpticks]
         elif arg == 'week':
             t_delta = datetime.timedelta(days=1)
             xpticks = [t_start +i*t_delta for i in xrange(9)]
             xpticks = [i.replace(hour=00) for i in xpticks]
-            xpticks = [i for i in xpticks if i <= t_end + t_delta]
+            xpticks = [i for i in xpticks if i <= t_end]
             xvticks = ['{:%a}'.format(i) for i in xpticks]
         elif arg == 'month':
-            t_delta = datetime.timedelta(weeks=1)
-            xpticks = [t_start +i*t_delta for i in xrange(6)]
+            t_delta = int(t_shift/7) #datetime.timedelta(weeks=1)
+            xpticks = np.linspace(x[0], x[-1], 7) #[t_start +i*t_delta for i in xrange(6)]
+            xpticks = [datetime.datetime.fromtimestamp(i) for i in xpticks]
             xpticks = [i.replace(hour=00) for i in xpticks]
-            xpticks = [i for i in xpticks if i <= t_end + t_delta]
+            xpticks = [i for i in xpticks if i <= t_end]
             xvticks = ['{:%d %b}'.format(i) for i in xpticks]
         elif arg == 'year':
             t_delta = datetime.timedelta(days=30)
@@ -122,10 +124,10 @@ class ImgHandler(tornado.web.RequestHandler):
             plt.xticks(xpticks, xvticks)
             plt.draw()
             
-        io = StringIO()
-        plt.savefig(io, format='svg')
+        io = BytesIO()
+        plt.savefig(io, format='png')
         plt.close()
-        self.set_header("Content-Type", "image/svg+xml")
+        self.set_header("Content-Type", "image/png") #+xml")
         self.write(io.getvalue())
 
 
