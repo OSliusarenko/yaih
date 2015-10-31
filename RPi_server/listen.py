@@ -1,8 +1,27 @@
-from nrf24 import NRF24
+from nrf24_BOARD import NRF24
 import time
+import RPi.GPIO as GPIO
+import sys
+import signal
+from HD44780_BOARD import HD44780
+
 
 def strToListOfInt(msg):
     return [ord(c) for c in msg]
+
+
+def interrupt_signal_handler(ssignal, frame):
+    """ Cleans out pins when ^C received"""
+    print 'Exitting...\n'
+    GPIO.cleanup()
+    sys.exit()
+
+def place_text(strings, row):
+    """ Wrapper for LCD """
+    s_tmp = strings+' '*(16-len(strings))
+    if row == 1:
+        s_tmp = '\n' + s_tmp
+    LCD.message(s_tmp)
 
 pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7], [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
 
@@ -11,7 +30,7 @@ remoteId = 0x00
 thermoId = 0xff
 
 radio = NRF24()
-radio.begin(0, 0, 22)
+radio.begin(0, 0, 15)
 
 radio.setRetries(0,0xf)
 
@@ -37,6 +56,15 @@ radio.startListening()
 
 c=1
 
+LCD = HD44780()
+
+place_text('Temperature', 0)
+place_text('-= loading =-', 1)
+
+signal.signal(signal.SIGINT, interrupt_signal_handler)
+
+temperature_old = 0
+
 with open('sensor_1.dat', 'a') as f:
     while True:
         pipe = [0]
@@ -46,35 +74,43 @@ with open('sensor_1.dat', 'a') as f:
 
         recv_buffer = []
         radio.read(recv_buffer, radio.getDynamicPayloadSize())
-        msg = ''
 
-        if recv_buffer[0]==myId and recv_buffer[1]==thermoId:   
-            batt_V = ((recv_buffer[6]<<8 & 0xFF00) 
+        if recv_buffer[0]==myId and recv_buffer[1]==thermoId:
+            batt_V = ((recv_buffer[6]<<8 & 0xFF00)
                     + (recv_buffer[7] & 0xFF))
-            temperature = ((recv_buffer[4]<<8 & 0xFF00) 
+            temperature = ((recv_buffer[4]<<8 & 0xFF00)
                          + (recv_buffer[5] & 0xFF))
 
-            msg = msg + '{:.3f}'.format(batt_V*2.5*2/1023-0.1) + '\t'
+            tnow = time.localtime()
+
+            if temperature!=temperature_old:
+                temperature_old = temperature
+                msg = str(tnow.tm_hour) + ':' + str(tnow.tm_min)
+                place_text(msg, 0)
+                msg = 't= {:.1f} C'.format(temperature*1500/1023/3.55-267)
+                place_text(msg, 1)
+
+
+            msg = '{:.3f}'.format(batt_V*2.5*2/1023-0.1) + '\t'
             msg = msg + '{:.3f}'.format(temperature*1500/1023/3.55-267)
             msg = msg + '\n'
-          
-            tnow = time.localtime()
+
             print str(tnow.tm_hour) + ':' +\
                   str(tnow.tm_min) + ':' +\
                   str(tnow.tm_sec) +  ' ' + msg,
 
             f.write(str(time.time()) + '\t' + msg)
-            f.flush()	
+            f.flush()
 
         if recv_buffer[0]==myId and recv_buffer[1]==remoteId:
-            print 'remote'   
+            print 'remote'
             if recv_buffer[2]==ord('g') and recv_buffer[3]==ord('t'):
                 print 'Sending time...'
                 tm = time.localtime(time.time())
                 akpl_buf=[tm.tm_hour, tm.tm_min, tm.tm_sec]
                 print akpl_buf
                 radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
-                          
+
 
         c = c + 1
 

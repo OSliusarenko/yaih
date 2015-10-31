@@ -19,6 +19,7 @@ def randomString(length):
 class Gui(threading.Thread):
 
     quitting = False
+    UIinitialized = False
     commandsQueue = list()  # storage for all commands
 
 
@@ -44,42 +45,42 @@ class Gui(threading.Thread):
 
         self.lb.bind("<<ListboxSelect>>", self.onSelect)
 
-        ubtn = tk.Button(self.root, text=u"\u25b2",
+        self.ubtn = tk.Button(self.root, text=u"\u25b2",
                          command=lambda : self.commandsQueue.append('u'))
-        ubtn.grid(row=1, column=2)
+        self.ubtn.grid(row=1, column=2)
 
-        dbtn = tk.Button(self.root, text=u"\u25bc",
+        self.dbtn = tk.Button(self.root, text=u"\u25bc",
                          command=lambda : self.commandsQueue.append('d'))
-        dbtn.grid(row=3, column=2)
+        self.dbtn.grid(row=3, column=2)
 
-        lbtn = tk.Button(self.root, text=u"\u25c0",
+        self.lbtn = tk.Button(self.root, text=u"\u25c0",
                          command=lambda : self.commandsQueue.append('l'))
-        lbtn.grid(row=2, column=1, padx=5)
+        self.lbtn.grid(row=2, column=1, padx=5)
 
-        rbtn = tk.Button(self.root, text=u"\u25b6",
+        self.rbtn = tk.Button(self.root, text=u"\u25b6",
                          command=lambda : self.commandsQueue.append('r'))
-        rbtn.grid(row=2, column=3, padx=5)
+        self.rbtn.grid(row=2, column=3, padx=5)
 
-        sbtn = tk.Button(self.root, text=u"\u25a0",
+        self.sbtn = tk.Button(self.root, text=u"\u25a0",
                          command=lambda : self.commandsQueue.append('s'))
-        sbtn.grid(row=4, column=1)
+        self.sbtn.grid(row=4, column=1)
 
-        pbtn = tk.Button(self.root, height=1, width=6,
+        self.pbtn = tk.Button(self.root, height=1, width=6,
                                text=u"\u25b6\u25ae\u25ae",
                          command=lambda : self.commandsQueue.append('p'))
-        pbtn.grid(row=4, column=2, columnspan=2)
+        self.pbtn.grid(row=4, column=2, columnspan=2)
 
         self.var = tk.StringVar()
         self.label = tk.Label(self.root, text=0, textvariable=self.var)
         self.label.grid(row=6, column=0, columnspan=2, rowspan=1,
             padx=1, pady=1, sticky=(tk.S+tk.W))
 
-        fbtn = tk.Button(self.root, text="flush", height=1, width=2,
+        self.fbtn = tk.Button(self.root, text="flush", height=1, width=2,
                          command=self.flush)
-        fbtn.grid(row=6, column=2)
-        cbtn = tk.Button(self.root, text="Close", height=1, width=2,
+        self.fbtn.grid(row=6, column=2)
+        self.cbtn = tk.Button(self.root, text="Close", height=1, width=2,
                          command=partial(self.onExit, self.root))
-        cbtn.grid(row=6, column=3)
+        self.cbtn.grid(row=6, column=3)
 
 
     def flush(self):
@@ -99,13 +100,37 @@ class Gui(threading.Thread):
         self.lb.delete(0, tk.END)
 
 
-    def onSelect(self, val):
+    def selectListBoxLine(self, linenum):
+        self.lb.selection_clear(0, tk.END)
+        self.lb.selection_set(linenum)
+        self.lb.see(linenum)
 
-        sender = val.widget
-        idx = sender.curselection()
-        value = sender.get(idx)
 
+    def getListBoxSelectedLine(self):
+        idx = self.lb.curselection()
+        value = self.lb.get(idx)
+        return idx, value
+
+
+    def setStatus(self, value):
         self.var.set(value)
+
+
+    def onSelect(self, val):
+        self.commandsQueue.append('set_selection')
+
+
+    def setMode(self, mode):
+        if mode=='select_artists':
+            self.lbtn.config(state=tk.NORMAL, text='A<')
+            self.rbtn.config(state=tk.NORMAL, text='>Z')
+            self.pbtn.config(text='Choose')
+            self.sbtn.config(state=tk.DISABLED)
+        elif mode=='add_albums':
+            self.lbtn.config(state=tk.DISABLED)
+            self.rbtn.config(state=tk.DISABLED)
+            self.pbtn.config(text=u'+/ \u25b6')
+            self.sbtn.config(state=tk.NORMAL, text='<-')
 
 
     def onExit(self, frame):
@@ -126,11 +151,16 @@ class Gui(threading.Thread):
                                 partial(self.onExit, self.root))
 
         self.root.geometry("320x240+0+0")
+
+# To use this on Adafruit's LCD for RPi
+#    uncomment  the following line
 #        self.root.attributes("-fullscreen", True)
 
         self.initUI()
 
-        print 'Hello'
+        print 'GUI initialized.'
+
+        self.UIinitialized = True
 
         self.root.mainloop()
 
@@ -158,7 +188,10 @@ def main():
 
             sleep(0.1)
 
+    return 0
+
 
 
 if __name__ == '__main__':
     main()
+
