@@ -15,7 +15,7 @@ class Player():
         self.client.idletimeout = None          # timeout for fetching the result of the idle command is handled seperately, default: None
 
         try:
-            self.client.connect("localhost", 6600)  # connect to localhost:6600
+            self.client.connect("piplay", 6600)  # connect to piplay:6600
             print 'MPD version',
             print(self.client.mpd_version)          # print the MPD version
             self.connected_to_mpd = True

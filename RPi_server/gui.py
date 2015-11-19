@@ -5,22 +5,26 @@ import ttk
 import Tkinter as tk
 import tkMessageBox
 import threading
+import signal
+import os
 
 import random # temporarily, remove after
 import string
 
 from functools import partial
 from time import sleep
+from collections import deque
 
 def randomString(length):
     return ''.join(random.choice(string.lowercase+string.digits+
                    string.uppercase) for i in range(length))
 
+
 class Gui(threading.Thread):
 
     quitting = False
     UIinitialized = False
-    commandsQueue = list()  # storage for all commands
+    commandsQueue = deque()  # storage for all commands
 
 
     def __init__(self):
@@ -46,28 +50,28 @@ class Gui(threading.Thread):
         self.lb.bind("<<ListboxSelect>>", self.onSelect)
 
         self.ubtn = tk.Button(self.root, text=u"\u25b2",
-                         command=lambda : self.commandsQueue.append('u'))
+                    command=partial(self.appendToCommandsQueue, 'u'))
         self.ubtn.grid(row=1, column=2)
 
         self.dbtn = tk.Button(self.root, text=u"\u25bc",
-                         command=lambda : self.commandsQueue.append('d'))
+                    command=partial(self.appendToCommandsQueue, 'd'))
         self.dbtn.grid(row=3, column=2)
 
         self.lbtn = tk.Button(self.root, text=u"\u25c0",
-                         command=lambda : self.commandsQueue.append('l'))
+                    command=partial(self.appendToCommandsQueue, 'l'))
         self.lbtn.grid(row=2, column=1, padx=5)
 
         self.rbtn = tk.Button(self.root, text=u"\u25b6",
-                         command=lambda : self.commandsQueue.append('r'))
+                    command=partial(self.appendToCommandsQueue, 'r'))
         self.rbtn.grid(row=2, column=3, padx=5)
 
         self.sbtn = tk.Button(self.root, text=u"\u25a0",
-                         command=lambda : self.commandsQueue.append('s'))
+                    command=partial(self.appendToCommandsQueue, 's'))
         self.sbtn.grid(row=4, column=1)
 
         self.pbtn = tk.Button(self.root, height=1, width=6,
                                text=u"\u25b6\u25ae\u25ae",
-                         command=lambda : self.commandsQueue.append('p'))
+                    command=partial(self.appendToCommandsQueue, 'p'))
         self.pbtn.grid(row=4, column=2, columnspan=2)
 
         self.var = tk.StringVar()
@@ -79,14 +83,14 @@ class Gui(threading.Thread):
                          command=self.flush)
         self.fbtn.grid(row=6, column=2)
         self.cbtn = tk.Button(self.root, text="Close", height=1, width=2,
-                         command=partial(self.onExit, self.root))
+                         command=self.onExit)
         self.cbtn.grid(row=6, column=3)
 
 
     def flush(self):
         """ Temporary, delete afterwards """
         while self.commandsQueue != []:
-            self.lb.insert(tk.END, self.commandsQueue.pop(0))
+            self.lb.insert(tk.END, self.commandsQueue.popleft())
 
 
     def feedToListbox(self, lines):
@@ -133,28 +137,30 @@ class Gui(threading.Thread):
             self.sbtn.config(state=tk.NORMAL, text='<-')
 
 
-    def onExit(self, frame):
+    def appendToCommandsQueue(self, command):
+        """ Appends a command to the end of the queue, raises USR1 """
+        self.commandsQueue.append(command)
+        os.kill(os.getpid(), signal.SIGUSR1)
+
+
+    def onExit(self):
         """ Correctly destroys the window and says to main thread that
-            we need to exit.
-            Of course, since it is a member function of a class with
-            just one window, we could use this function without 'frame'
-            argument, and just do 'self.root.quit()'. But it's fun to
-            use 'partial' :) """
+            we need to exit. """
         if tkMessageBox.askokcancel("Quit", "Stop playing?"):
+            self.root.quit()
             self.quitting = True
-            frame.quit()
+            os.kill(os.getpid(), signal.SIGUSR1)
 
 
     def run(self):
         self.root = tk.Tk()
-        self.root.protocol("WM_DELETE_WINDOW",
-                                partial(self.onExit, self.root))
+        self.root.protocol("WM_DELETE_WINDOW", self.onExit)
 
         self.root.geometry("320x240+0+0")
 
 # To use this on Adafruit's LCD for RPi
 #    uncomment  the following line
-#        self.root.attributes("-fullscreen", True)
+        #self.root.attributes("-fullscreen", True)
 
         self.initUI()
 
@@ -176,7 +182,7 @@ def main():
             break
         else:
             while gui.commandsQueue != []:
-                command = gui.commandsQueue.pop(0)
+                command = gui.commandsQueue.popleft()
                 if command=='p':
                     gui.clearListBox()
                     msg = []

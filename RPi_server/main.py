@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import signal
+from time import sleep
+
 from player2 import Player
 from gui import Gui
 
-from time import sleep
 
 currentMode = ''
 currentChoice = 0
 maxChoice = 0
 
+
+def usr1_signal_handler(ssignal, stack):
+    """ Temporarily nothing """
+    pass
 
 def main():
 
@@ -73,13 +79,22 @@ def main():
         showArtists('curr')
         setMode('select_artists')
 
+        signal.signal(signal.SIGUSR1, usr1_signal_handler)
+
         while True:
             if gui.quitting:
                 print 'quitting...'
                 break
             else:
-                while gui.commandsQueue != []:
-                    command = gui.commandsQueue.pop(0)
+                signal.pause()     # wait for interrupt (command?)
+
+                while True:
+                    try:
+                        command = gui.commandsQueue.popleft()
+                    except IndexError:
+                        print 'Empty'
+                        break
+
                     if command=='r':
                         showArtists('next')
                     elif command=='l':
@@ -107,8 +122,6 @@ def main():
                         currentChoice = idx[0]
                     else:
                         print command
-
-                sleep(0.1)
 
         player.MPDserverDisconnect()
 

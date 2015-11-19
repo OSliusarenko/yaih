@@ -1,5 +1,6 @@
 from nrf24_BOARD import NRF24
 import time
+import datetime
 import RPi.GPIO as GPIO
 import sys
 import signal
@@ -13,8 +14,16 @@ def strToListOfInt(msg):
 def interrupt_signal_handler(ssignal, frame):
     """ Cleans out pins when ^C received"""
     print 'Exitting...\n'
+    signal.setitimer(signal.ITIMER_REAL, 0) # ?
     GPIO.cleanup()
     sys.exit()
+
+def italarm_signal_handler(ssignal, stack):
+    """ Does repeatedly one action, for clock """
+    tnow = datetime.datetime.today()
+    msg = '{:%a %d %b %H:%M}'.format(tnow)
+    place_text(msg, 1)
+
 
 def place_text(strings, row):
     """ Wrapper for LCD """
@@ -58,10 +67,15 @@ c=1
 
 LCD = HD44780()
 
-place_text('Temperature', 0)
+signal.signal(signal.SIGINT, interrupt_signal_handler)
+
+place_text('temp', 0)
 place_text('-= loading =-', 1)
 
-signal.signal(signal.SIGINT, interrupt_signal_handler)
+# for clock
+signal.signal(signal.SIGALRM, italarm_signal_handler)
+signal.setitimer(signal.ITIMER_REAL, 60, 60)
+###
 
 temperature_old = 0
 
@@ -85,10 +99,8 @@ with open('sensor_1.dat', 'a') as f:
 
             if temperature!=temperature_old:
                 temperature_old = temperature
-                msg = str(tnow.tm_hour) + ':' + str(tnow.tm_min)
-                place_text(msg, 0)
                 msg = 't= {:.1f} C'.format(temperature*1500/1023/3.55-267)
-                place_text(msg, 1)
+                place_text(msg, 0)
 
 
             msg = '{:.3f}'.format(batt_V*2.5*2/1023-0.1) + '\t'
