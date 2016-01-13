@@ -4,6 +4,7 @@ import datetime
 import RPi.GPIO as GPIO
 import sys
 import signal
+import requests
 from HD44780_BOARD import HD44780
 
 
@@ -113,6 +114,11 @@ with open('sensor_1.dat', 'a') as f:
 
             f.write(str(time.time()) + '\t' + msg)
             f.flush()
+
+            http_params = {'time': time.time(),
+                           'temp': temperature*1500/1023/3.55-267,
+                           'batt': batt_V*2.5*2/1023-0.1}
+            requests.get("http://134.168.45.2/data", params=http_params)
 
         if recv_buffer[0]==myId and recv_buffer[1]==remoteId:
             print 'remote'

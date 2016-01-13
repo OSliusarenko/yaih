@@ -20,14 +20,33 @@ class MainHandler(tornado.web.RequestHandler):
         curr_temperature = '{:.1f}'.format(float(line.split('\t')[-1]))
         self.render("template.html", curr_temperature=curr_temperature)
 
+
+class DataHandler(tornado.web.RequestHandler):
+    def get(self):
+        data_times = self.get_arguments('time')
+        data_temps = self.get_arguments('temp')
+        data_batts = self.get_arguments('batt')
+        if data_times==[] or data_temps==[] or data_batts==[]:
+            self.set_status(400)
+            return self.finish('Invalid parameters')
+        with open('sensor_1.dat', 'a') as f:
+            for data_time, data_temp, data_batt in zip(data_times,
+                                                data_temps, data_batts):
+                data_str = '{:f}\t{:f}\t{:f}\n'.format(float(data_time),
+                                                       float(data_batt),
+                                                       float(data_temp))
+                f.write(data_str)
+                self.write(data_str + '<br>')
+
+
 class ImgHandler(tornado.web.RequestHandler):
     def get(self, arg=1):
-        
+
         plotpoints = 300
-        
+
         ct = time.time()
         data = []
-        
+
         if arg == 'day':
             t_shift = datetime.timedelta(days=1).total_seconds()
         elif arg == 'week':
@@ -38,7 +57,7 @@ class ImgHandler(tornado.web.RequestHandler):
             t_shift = datetime.timedelta(days=365).total_seconds()
         elif arg == 'all-time':
             t_shift = datetime.timedelta(days=3650).total_seconds()
-        
+
         with open('sensor_1.dat', 'r') as f:
             for line in f:
                 t = int(float(line.split('\t')[0]))
@@ -46,22 +65,22 @@ class ImgHandler(tornado.web.RequestHandler):
                 s = float(line.split('\t')[2])
                 if ct - t < t_shift:
                     data.append([t, v, s])
-                                   
+
         if len(data) > plotpoints: # avoid plotting too much points
             delta_data = int(np.ceil(len(data)/(plotpoints - 1)))
             new_data = data[::delta_data]
         else:
             new_data = data
-            
+
         x = [d[0] for d in new_data]
         yv = [d[1] for d in new_data]
         ys = [d[2] for d in new_data]
-            
+
         t_start = datetime.datetime.fromtimestamp(x[0])
         t_end = datetime.datetime.today()
 
         if arg == 'day':
-            t_delta = datetime.timedelta(hours=3) 
+            t_delta = datetime.timedelta(hours=3)
             xpticks = [t_start +i*t_delta for i in xrange(9)]
             xpticks = [i.replace(minute=00) for i in xpticks]
             xvticks = ['{:%H:%M}'.format(i) for i in xpticks]
@@ -83,22 +102,22 @@ class ImgHandler(tornado.web.RequestHandler):
             xpticks = [t_start +i*t_delta for i in xrange(14)]
             xpticks = [i.replace(day=1) for i in xpticks]
             xpticks = [i for i in xpticks if i <= t_end + t_delta]
-            xvticks = ['{:%b}'.format(i) for i in xpticks] 
+            xvticks = ['{:%b}'.format(i) for i in xpticks]
         elif arg == 'all-time':
             t_delta = datetime.timedelta(days=365)
             xpticks = [t_start +i*t_delta for i in xrange(9)]
             xpticks = [i.replace(month=1) for i in xpticks]
             xpticks = [i for i in xpticks if i <= t_end + t_delta]
-            xvticks = ['{:%Y}'.format(i) for i in xpticks] 
+            xvticks = ['{:%Y}'.format(i) for i in xpticks]
         xpticks = [time.mktime(i.timetuple()) for i in xpticks]
-        
+
         with plt.style.context('fivethirtyeight'):
             plt.rcParams['figure.figsize'] = (8.0,4.0)
             plt.rcParams['figure.autolayout'] = True
             host = host_subplot(111, axes_class=AA.Axes)
-            
+
             plt.subplots_adjust(right=0.9)
-            
+
             par1 = host.twinx()
 
             host.set_xlim(x[0], x[-1])
@@ -123,7 +142,7 @@ class ImgHandler(tornado.web.RequestHandler):
 
             plt.xticks(xpticks, xvticks)
             plt.draw()
-            
+
         io = BytesIO()
         plt.savefig(io, format='png')
         plt.close()
@@ -136,6 +155,7 @@ application = tornado.web.Application([
   (r"/", MainHandler),
   (r"/img", ImgHandler),
   (r"/img/(.*)", ImgHandler),
+  (r"/data", DataHandler),
   ])
 
 if __name__ == "__main__":

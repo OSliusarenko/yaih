@@ -9,6 +9,9 @@ from gui import Gui
 
 
 currentMode = ''
+chosenArtist = ''
+chosenAlbum = ''
+
 currentChoice = 0
 maxChoice = 0
 
@@ -25,6 +28,8 @@ def main():
     global currentMode
     global currentChoice
     global maxChoice
+    global chosenArtist
+    global chosenAlbum
 
 
     def setMode(mode):
@@ -56,13 +61,26 @@ def main():
     def showAlbums():
         global currentChoice
         global maxChoice
-        idx, artist = gui.getListBoxSelectedLine()
-        msg = player.MPDscanArtistsAlbums(artist)
+        global chosenArtist
+        idx, chosenArtist = gui.getListBoxSelectedLine()
+        msg = player.MPDscanArtistsAlbums(chosenArtist)
         currentChoice = 0
         maxChoice = len(msg)
         gui.clearListBox()
         gui.feedToListbox(msg)
         gui.selectListBoxLine(currentChoice)
+        
+        
+    def addChosenAlbum():
+        global currentChoice
+        global maxChoice
+        global chosenArtist
+        global chosenAlbum
+        idx, chosenAlbum = gui.getListBoxSelectedLine()
+        player.MPDaddArtistAlbumToPlaylist(chosenArtist, chosenAlbum)
+        gui.setStatus(u'Album \' {:s}\' added!'.format(chosenAlbum))
+
+        
 
 
 
@@ -70,8 +88,8 @@ def main():
         sleep(0.1)
 
     if player.connected_to_mpd:
-        gui.setStatus('Updating music database...')
-        player.MPDupdateDatabase()
+        #gui.setStatus('Updating music database...')
+        #player.MPDupdateDatabase()
         gui.setStatus('Scanning artists...')
         player.MPDscanArtists()
 
@@ -102,24 +120,41 @@ def main():
                     elif command=='d':
                         if currentChoice+1<maxChoice:
                             currentChoice += 1
+                            if currentMode=='ready_to_play':
+                                setMode('add_albums')
                         gui.selectListBoxLine(currentChoice)
                     elif command=='u':
                         if currentChoice-1>=0:
                             currentChoice -= 1
+                            if currentMode=='ready_to_play':
+                                setMode('add_albums')
                         gui.selectListBoxLine(currentChoice)
                     elif command=='p':
-                        oldArtistChoice = currentChoice
-                        setMode('add_albums')
-                        showAlbums()
+                        if currentMode=='select_artists':
+                            oldArtistChoice = currentChoice
+                            setMode('add_albums')
+                            showAlbums()
+                        elif currentMode=='add_albums':
+                            setMode('ready_to_play')
+                            addChosenAlbum()
                     elif command=='s':
+                        if currentMode=='ready_to_play':
+                                setMode('add_albums')
                         if currentMode=='add_albums':
                             setMode('select_artists')
                             showArtists('curr')
                             currentChoice = oldArtistChoice
                             gui.selectListBoxLine(currentChoice)
                     elif command=='set_selection':
+                        if currentMode=='ready_to_play':
+                                setMode('add_albums')
                         idx, value = gui.getListBoxSelectedLine()
                         currentChoice = idx[0]
+                    elif command=='c':
+                        player.MPDclearPlayList()
+                        if currentMode=='ready_to_play':
+                                setMode('add_albums')
+                        gui.setStatus('Current playlist is empty')
                     else:
                         print command
 

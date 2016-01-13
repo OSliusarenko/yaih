@@ -41,13 +41,8 @@
 #define PCD8544_SETVOP 0x80
 
 //transform
-#define NONE 0x00
-#define FLIP_H 0x01
-#define FLIP_V 0x02
-#define ROTATE 0x04 // 90 deg CW
-#define ROTATE_90_CW ROTATE
-#define ROTATE_90_CCW (FLIP_H | FLIP_V | ROTATE)
-#define ROTATE_180 (FLIP_H | FLIP_V)
+#define FNT_NORMAL 0
+#define FNT_INVERTED 1
 
 static const char font[][5] = { // basic font
 {0x00, 0x00, 0x00, 0x00, 0x00} // 20
@@ -148,11 +143,10 @@ static const char font[][5] = { // basic font
 ,{0x00, 0x06, 0x09, 0x09, 0x06} // 7f Deg Symbol
 };
 
-void writeStringToLCD(const char *string);
-void writeCharToLCD(char c);
+void writeStringToLCD(const char *string, _Bool fnt);
+void writeCharToLCD(char c, _Bool fnt);
 void writeIntToLCD(char i);
-void writeBlockToLCD(char *byte, unsigned char length);
-void writeGraphicToLCD(char *byte, unsigned char transform);
+void writeGraphicToLCD(char *byte, char size);
 void writeToLCD(unsigned char dataCommand, unsigned char data);
 void clearLCD();
 void clearBank(unsigned char bank);

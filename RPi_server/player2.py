@@ -15,7 +15,7 @@ class Player():
         self.client.idletimeout = None          # timeout for fetching the result of the idle command is handled seperately, default: None
 
         try:
-            self.client.connect("piplay", 6600)  # connect to piplay:6600
+            self.client.connect("localhost", 6600)  # connect to piplay:6600
             print 'MPD version',
             print(self.client.mpd_version)          # print the MPD version
             self.connected_to_mpd = True
@@ -35,6 +35,10 @@ class Player():
         while 'updating_db' in self.client.status():
             sleep(1)
         print('Done!')
+        
+        
+    def MPDclearPlayList(self):
+        self.client.clear()
 
 
     def MPDscanArtists(self):
@@ -74,6 +78,13 @@ class Player():
                 if cU==chosenLetterU:
                     msg.append(artist)
         return msg
+        
+        
+    def MPDaddArtistAlbumToPlaylist(self, myartist, myalbum):
+        myplaylist = self.client.find('artist', myartist, 'album', myalbum)
+        for c in myplaylist:
+            self.client.add(c['file'])
+        
 
 
     def nextLetter(self):
@@ -94,28 +105,6 @@ class Player():
         return self.MPDchooseArtistsWithFirstLetter(
                                                self.currentLetterNumber)
 
-"""    def temp(self):
-            if i!=0:
-                myalbumid = int(input('Disc '))
-            else:
-                myalbumid = 0
-            if 0<=myalbumid<len(myalbums):
-                myalbum = myalbums[myalbumid]
-                print '\nChosen album', myalbum, '\n'
-
-                # TODO: depend on MPD version
-                client.clear()
-                myplaylist = client.find('artist', myartist, 'album', myalbum)
-
-                for c in myplaylist:
-                    client.add(c['file'])
-                ###
-                client.play()
-            else:
-                print 'Album id out of range'
-        else:
-            print 'Artist id out of range'
-"""
 
 
 def main():

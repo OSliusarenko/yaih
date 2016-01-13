@@ -79,18 +79,15 @@ class Gui(threading.Thread):
         self.label.grid(row=6, column=0, columnspan=2, rowspan=1,
             padx=1, pady=1, sticky=(tk.S+tk.W))
 
-        self.fbtn = tk.Button(self.root, text="flush", height=1, width=2,
-                         command=self.flush)
+        self.fbtn = tk.Button(self.root, text="Clear", height=1, width=2,
+                    command=partial(self.appendToCommandsQueue, 'c'))
         self.fbtn.grid(row=6, column=2)
         self.cbtn = tk.Button(self.root, text="Close", height=1, width=2,
                          command=self.onExit)
         self.cbtn.grid(row=6, column=3)
 
 
-    def flush(self):
-        """ Temporary, delete afterwards """
-        while self.commandsQueue != []:
-            self.lb.insert(tk.END, self.commandsQueue.popleft())
+       
 
 
     def feedToListbox(self, lines):
@@ -121,7 +118,7 @@ class Gui(threading.Thread):
 
 
     def onSelect(self, val):
-        self.commandsQueue.append('set_selection')
+        self.appendToCommandsQueue('set_selection')
 
 
     def setMode(self, mode):
@@ -133,8 +130,10 @@ class Gui(threading.Thread):
         elif mode=='add_albums':
             self.lbtn.config(state=tk.DISABLED)
             self.rbtn.config(state=tk.DISABLED)
-            self.pbtn.config(text=u'+/ \u25b6')
+            self.pbtn.config(text=u'Add')#/ \u25b6
             self.sbtn.config(state=tk.NORMAL, text='<-')
+        elif mode=='ready_to_play':
+            self.pbtn.config(text=u'\u25b6')
 
 
     def appendToCommandsQueue(self, command):
@@ -146,10 +145,10 @@ class Gui(threading.Thread):
     def onExit(self):
         """ Correctly destroys the window and says to main thread that
             we need to exit. """
-        if tkMessageBox.askokcancel("Quit", "Stop playing?"):
-            self.root.quit()
-            self.quitting = True
-            os.kill(os.getpid(), signal.SIGUSR1)
+#        if tkMessageBox.askokcancel("Quit", "Stop playing?"):
+        self.root.quit()
+        self.quitting = True
+        os.kill(os.getpid(), signal.SIGUSR1)
 
 
     def run(self):

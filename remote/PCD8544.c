@@ -1,80 +1,36 @@
 #include "PCD8544.h"
 
-void writeStringToLCD(const char *string) {
+void writeStringToLCD(const char *string, _Bool fnt) {
 while(*string) {
-writeCharToLCD(*string++);
+writeCharToLCD(*string++, fnt);
 }
 }
 
-void writeCharToLCD(char c) {
-unsigned char i;
-for(i = 0; i < 5; i++) {
-writeToLCD(LCD5110_DATA, font[c - 0x20][i]);
-}
-writeToLCD(LCD5110_DATA, 0);
+void writeCharToLCD(char c, _Bool fnt) {
+    unsigned char i;
+    for(i = 0; i < 5; i++) {
+        if (fnt) writeToLCD(LCD5110_DATA, ~(font[c - 0x20][i]));
+          else writeToLCD(LCD5110_DATA, font[c - 0x20][i]);
+    }
+    if (fnt) writeToLCD(LCD5110_DATA, 0xFF);
+      else writeToLCD(LCD5110_DATA, 0);
 }
 
-void writeIntToLCD(char i) 
+void writeIntToLCD(char i)
 {
     if (i < 0)
     {
-        writeCharToLCD('-');
+        writeCharToLCD('-', FNT_NORMAL);
         i *= -1;
     };
-    
-    writeCharToLCD(i/10+0x30);
-    writeCharToLCD(i%10+0x30);
+
+    writeCharToLCD(i/10+0x30, FNT_NORMAL);
+    writeCharToLCD(i%10+0x30, FNT_NORMAL);
 
 };
-    
 
-void writeBlockToLCD(char *byte, unsigned char length) {
-unsigned char c = 0;
-while(c < length) {
-writeToLCD(LCD5110_DATA, *byte++);
-c++;
-}
-}
-
-void writeGraphicToLCD(char *byte, unsigned char transform) {
-int c = 0;
-char block[8];
-
-if(transform & FLIP_V) {
-SPI_LSB_FIRST;
-}
-if(transform & ROTATE) {
-c = 1;
-while(c != 0) {
-(*byte & 0x01) ? (block[7] |= c) : (block[7] &= ~c);
-(*byte & 0x02) ? (block[6] |= c) : (block[6] &= ~c);
-(*byte & 0x04) ? (block[5] |= c) : (block[5] &= ~c);
-(*byte & 0x08) ? (block[4] |= c) : (block[4] &= ~c);
-(*byte & 0x10) ? (block[3] |= c) : (block[3] &= ~c);
-(*byte & 0x20) ? (block[2] |= c) : (block[2] &= ~c);
-(*byte & 0x40) ? (block[1] |= c) : (block[1] &= ~c);
-(*byte & 0x80) ? (block[0] |= c) : (block[0] &= ~c);
-*byte++;
-c <<= 1;
-}
-} else {
-while(c < 8) {
-block[c++] = *byte++;
-}
-}
-
-if(transform & FLIP_H) {
-c = 7;
-while(c > -1) {
-writeToLCD(LCD5110_DATA, block[c--]);
-}
-} else {
-c = 0;
-while(c < 8) {
-writeToLCD(LCD5110_DATA, block[c++]);
-}
-}
-SPI_MSB_FIRST;
+void writeGraphicToLCD(char *byte, char size) {
+    while(size--) writeToLCD(LCD5110_DATA, *byte++);
 }
 
 void writeToLCD(unsigned char dataCommand, unsigned char data) {
