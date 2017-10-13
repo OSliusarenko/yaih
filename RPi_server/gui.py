@@ -114,6 +114,7 @@ class Gui(threading.Thread):
 
 
     def setStatus(self, value):
+        print 'setting status'
         self.var.set(value)
 
 

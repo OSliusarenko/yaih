@@ -17,7 +17,7 @@ class Player():
 #        self.client.idletimeout = None          # timeout for fetching the result of the idle command is handled seperately, default: None
 
         self.MPDserverconnect()
-        self.mixer = alsaaudio.Mixer()
+        self.mixer = alsaaudio.Mixer(cardindex=1)
 
     def MPDnext(self):
         for i in xrange(5):
@@ -183,6 +183,18 @@ class Player():
                 if cU==chosenLetterU:
                     msg.append(artist)
         return msg
+
+
+    def MPDwhat_song_playing(self):
+        for i in xrange(5):
+            try:
+                return self.client.currentsong()
+            except:
+                self.connected_to_mpd = False
+                self.MPDserverconnect()
+        else:
+            print('Maximum attempts exceeded')
+
 
 
     def MPDaddArtistAlbumToPlaylist(self, myartist, myalbum):

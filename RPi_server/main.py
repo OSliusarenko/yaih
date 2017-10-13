@@ -11,6 +11,7 @@ from gui import Gui
 currentMode = ''
 chosenArtist = ''
 chosenAlbum = ''
+old_song = ''
 
 currentChoice = 0
 maxChoice = 0
@@ -21,6 +22,7 @@ def usr1_signal_handler(ssignal, stack):
     """ Update flag that the signal is the one that we need """
     global letsDo
     letsDo = True
+
 
 def main():
 
@@ -37,8 +39,25 @@ def main():
     oldArtistChoice = 0
 
 
+    def alarm_signal_handler(ssignal, stack):
+        """ Shows song name playing """
+        global old_song
+        song = what_song_playing()
+        if not song == old_song:
+            old_song = song
+            gui.setStatus('{:} [{:}]'.format(song['title'],
+                          song['artist'])[:32])
+
     def setMode(mode):
         global currentMode
+
+        if not currentMode == 'playing':
+            if mode == 'playing':
+                print('starting timer')
+                signal.setitimer(signal.ITIMER_REAL, 1, 5)   # set timer
+        else:
+            signal.setitimer(signal.ITIMER_REAL, 0)   # cancel timer
+
         currentMode = mode
         gui.setMode(currentMode)
 
@@ -99,6 +118,10 @@ def main():
         player.VolDn()
 
 
+    def what_song_playing():
+        return player.MPDwhat_song_playing()
+
+
     def addChosenAlbum():
         global currentChoice
         global maxChoice
@@ -141,6 +164,7 @@ def main():
             setMode('ready_to_play')
 
         signal.signal(signal.SIGUSR1, usr1_signal_handler)
+        signal.signal(signal.SIGALRM, alarm_signal_handler)
 
         while True:
             if gui.quitting:
@@ -150,6 +174,8 @@ def main():
                 letsDo = False
                 while not letsDo:
                     signal.pause()     # wait for interrupt (command?)
+
+                print('interrupt')
 
                 while True:
                     try:
