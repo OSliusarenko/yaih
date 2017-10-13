@@ -1,5 +1,6 @@
 import tornado.ioloop
 import tornado.web
+import json
 
 import matplotlib
 matplotlib.use('Agg')
@@ -22,21 +23,19 @@ class MainHandler(tornado.web.RequestHandler):
 
 
 class DataHandler(tornado.web.RequestHandler):
-    def get(self):
-        data_times = self.get_arguments('time')
-        data_temps = self.get_arguments('temp')
-        data_batts = self.get_arguments('batt')
-        if data_times==[] or data_temps==[] or data_batts==[]:
+    def post(self):
+        data = json.loads(self.request.body)
+        data_time = data['time']
+        data_temp = data['temp']
+        data_batt = data['batt']
+        if data_time==[] or data_temp==[] or data_batt==[]:
             self.set_status(400)
             return self.finish('Invalid parameters')
         with open('sensor_1.dat', 'a') as f:
-            for data_time, data_temp, data_batt in zip(data_times,
-                                                data_temps, data_batts):
-                data_str = '{:f}\t{:f}\t{:f}\n'.format(float(data_time),
-                                                       float(data_batt),
-                                                       float(data_temp))
-                f.write(data_str)
-                self.write(data_str + '<br>')
+            data_str = '{:d}\t{:.1f}\t{:.1f}\n'.format(int(float(data_time)),
+                                                   float(data_batt)/10.0,
+                                                   float(data_temp)/10.0)
+            f.write(data_str)
 
 
 class ImgHandler(tornado.web.RequestHandler):

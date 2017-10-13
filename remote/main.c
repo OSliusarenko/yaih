@@ -8,13 +8,14 @@
 #define BUTTONS (BTN_BACK|BTN_OK|BTN_UP|BTN_DOWN|BTN_LEFT|BTN_RIGHT)
 
 
-volatile unsigned char btn_pressed=0;
+volatile unsigned char btn_pressed=0, mint, hrst, hrs_al, min_al, sec_al;
+volatile int temperature;
+volatile _Bool alarm_set = 0;
 
 void backlightOn();
 void backlightOff();
 void init();
 void initKeyboard();
-char receiveString(unsigned char cmd);
 
 #include "msp430g2553.h"
 #include "PCD8544.c"
@@ -45,8 +46,8 @@ void init()
     WDTCTL = WDT_ADLY_1000;                   // WDT 1s interval timer
     IE1 = WDTIE;                             // Enable WDT interrupt
 
-    P1OUT |= LCD5110_SCE_PIN + LCD5110_DC_PIN;
     P1DIR |= LCD5110_SCE_PIN + LCD5110_DC_PIN + BACKLIGHT;
+    P1OUT |= LCD5110_SCE_PIN + LCD5110_DC_PIN;
 
     SPI_init();
     __delay_cycles(50000);
@@ -86,94 +87,110 @@ void __attribute__ ((interrupt(PORT2_VECTOR))) P2_ISR (void)
     return;
 } //P2_ISR
 
-char receiveString(unsigned char cmd){
-    unsigned char i, x, y, number_of_chunks=0;
-    char st;
-
-    defaultRX = 0;
-    NRF_init(86);
-
-    NRF_irq_clear_all();
-    NRF_broadcast_char(cmd); // send 'want string'
-
-// get number of chunks the string will be divided into and coordinates
-    while (1)
-    {
-        st = waitNRF();
-
-        if(st==0) // we got a reply!
-        {
-            number_of_chunks=RXBuf[0];
-            x = RXBuf[1]; y = RXBuf[2];
-            break; // end-of-session
-        };
-
-        if(st==1) //sent successfully, no ack yet
-        {
-            NRF_broadcast_char(0x3); // send 'waiting'
-        };
-
-        if (st==-1) break; // max_ret
-    };
-
-    setAddr(x, y);
-
-    while(number_of_chunks--)
-    {
-        NRF_broadcast_char(0x0); // send 'cont'
-
-        // get string
-            while (1)
-            {
-                st = waitNRF();
-
-                if(st==0) // we got a reply!
-                {
-                    for(i=0; i<ack_pw; i++)
-                        writeCharToLCD(RXBuf[i], FNT_NORMAL);
-                    break; // end-of-session
-                };
-
-                if(st==1) //sent successfully, no ack yet
-                {
-                    NRF_broadcast_char(0x3); // send 'waiting'
-                };
-
-                if (st==-1) break; // max_ret
-            };
-    };
-
-
-
-    NRF_down();
-
-    return st;
+void showTime()
+{
+    writeIntToLCD(hrs);
+    writeCharToLCD(':', FNT_NORMAL);
+    writeIntToLCD(min);
+    writeCharToLCD(':', FNT_NORMAL);
+    writeIntToLCD(sec);
+    if(NRF_rdOneReg(CONFIG) & CONFIG_PWR_UP) writeCharToLCD('*', FNT_NORMAL);
+        else writeCharToLCD('.', FNT_NORMAL);
 };
 
+//----------------------------------------------------------------------
+
+void getTemp()
+{
+    if(ack_pw>3 && RXBuf[0]==0x10 && RXBuf[1]==0xff)
+    {
+        mint=min; hrst=hrs; // timestamp of temperature reading
+        hrs_al=hrs; min_al=min+10; sec_al=sec-2;
+        alarm_set = 1;  // alarm clock for next probe
+        if(min_al>59)
+        {
+            min_al -= 60;
+            if(++hrs_al>23) hrs_al = 0;
+        };
+
+        temperature = ((RXBuf[4]<<8 & 0xFF00) + (RXBuf[5] & 0xFF))*10;
+        temperature -= 6464;
+        temperature *= 10;
+        temperature /= 24;
+    };
+};
+
+void showTemp()
+{
+    writeCharToLCD(temperature/100+0x30, FNT_NORMAL);
+    writeCharToLCD(temperature/10%10+0x30, FNT_NORMAL);
+    writeCharToLCD('.', FNT_NORMAL);
+    writeCharToLCD(temperature%10+0x30, FNT_NORMAL);
+};
+
+unsigned char isThereTemperatureReady()
+{
+    if(waitNRF()==0)
+    {
+        getTemp();
+        setAddr(17, 2);
+        showTemp();
+        NRF_down();
+        return 1;
+    };
+
+    return 0;
+};
+
+//----------------------------------------------------------------------
 
 void main(void) {
 
     init();
-    writeStringToLCD("remote ", FNT_NORMAL);
-    writeStringToLCD("test", FNT_INVERTED);
-    writeStringToLCD(" ver.", FNT_NORMAL);
-    char testBlock[8] = {0x01, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
 
     while(1) // main loop
     {
-        if (btn_pressed)
+
+/*        if (btn_pressed)
         {
-            if(receiveString(btn_pressed)==-1)
-            {
-                clearLCD();
-                writeStringToLCD("failed to connect", FNT_NORMAL);
-            };
+            if (btn_pressed==BTN_BACK) LCDoff();
+            if (btn_pressed==BTN_OK) LCDon();
+            if (btn_pressed==BTN_UP) backlightOn();
+            if (btn_pressed==BTN_DOWN) backlightOff();
             btn_pressed=0;
-            clearBank(3);
-            writeGraphicToLCD(testBlock, 8);
+        };
+*/
+        defaultRX = 1;
+        NRF_init(85);
+
+        while(!isThereTemperatureReady())
+        {
+            setAddr(17, 0);
+            showTime();
+            delay_sec(1);
         };
 
-        delay_sec(1);
+        defaultRX = 0;
+        NRF_init(86);
+
+        TXBuf[0] = 0x10;
+        TXBuf[1] = 0xff;
+        TXBuf[2] = RXBuf[2];
+        TXBuf[3] = RXBuf[3];
+        TXBuf[4] = RXBuf[4];
+
+        NRF_transmit(5);
+
+        NRF_down();
+
+    char i;
+
+    for (i=0; i<9; i++)
+    {
+        delay_sec(60);
+    };
+        delay_sec(30);
+
     };
 
 }

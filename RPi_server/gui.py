@@ -87,7 +87,7 @@ class Gui(threading.Thread):
         self.cbtn.grid(row=6, column=3)
 
 
-       
+
 
 
     def feedToListbox(self, lines):
@@ -123,18 +123,29 @@ class Gui(threading.Thread):
 
     def setMode(self, mode):
         if mode=='select_artists':
+            self.ubtn.config(text=u"\u25b2")
+            self.dbtn.config(text=u"\u25bc")
             self.lbtn.config(state=tk.NORMAL, text='A<')
             self.rbtn.config(state=tk.NORMAL, text='>Z')
             self.pbtn.config(text='Choose')
             self.sbtn.config(state=tk.DISABLED)
         elif mode=='add_albums':
+            self.ubtn.config(text=u"\u25b2")
+            self.dbtn.config(text=u"\u25bc")
             self.lbtn.config(state=tk.DISABLED)
             self.rbtn.config(state=tk.DISABLED)
             self.pbtn.config(text=u'Add')#/ \u25b6
             self.sbtn.config(state=tk.NORMAL, text='<-')
         elif mode=='ready_to_play':
+            self.ubtn.config(text=u"\u25b2")
+            self.dbtn.config(text=u"\u25bc")
             self.pbtn.config(text=u'\u25b6')
-
+        elif mode=='playing':
+            self.pbtn.config(text='II')
+            self.ubtn.config(text='vol+')
+            self.dbtn.config(text='vol-')
+            self.lbtn.config(state=tk.NORMAL, text='<<')
+            self.rbtn.config(state=tk.NORMAL, text='>>')
 
     def appendToCommandsQueue(self, command):
         """ Appends a command to the end of the queue, raises USR1 """

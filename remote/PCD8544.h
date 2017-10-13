@@ -152,6 +152,8 @@ void clearLCD();
 void clearBank(unsigned char bank);
 void setAddr(unsigned char xAddr, unsigned char yAddr);
 void initLCD();
+void LCDoff();
+void LCDon();
 
 
 #endif /*PCD8544_H_*/

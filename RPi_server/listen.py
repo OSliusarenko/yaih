@@ -5,6 +5,8 @@ import RPi.GPIO as GPIO
 import sys
 import signal
 import requests
+import json
+import numpy as np
 from HD44780_BOARD import HD44780
 
 
@@ -78,8 +80,6 @@ signal.signal(signal.SIGALRM, italarm_signal_handler)
 signal.setitimer(signal.ITIMER_REAL, 60, 60)
 ###
 
-temperature_old = 0
-
 with open('sensor_1.dat', 'a') as f:
     while True:
         pipe = [0]
@@ -92,21 +92,21 @@ with open('sensor_1.dat', 'a') as f:
 
         if recv_buffer[0]==myId and recv_buffer[1]==thermoId:
             batt_V = ((recv_buffer[6]<<8 & 0xFF00)
-                    + (recv_buffer[7] & 0xFF))
+                    + (recv_buffer[7] & 0xFF))*2.5*2/1023-0.1
             temperature = ((recv_buffer[4]<<8 & 0xFF00)
-                         + (recv_buffer[5] & 0xFF))
+                         + (recv_buffer[5] & 0xFF))*1500/1023/3.55-267
+
+            msg = 't= {:.2f} C'.format(temperature)
+            place_text(msg, 0)
+
+            batt_V = np.round(batt_V*10)/10
+            temperature = np.round(temperature*100)/100
+
+            msg = '{:.1f}'.format(batt_V) + '\t'
+            msg = msg + '{:.1f}'.format(temperature)
+            msg = msg + '\n'
 
             tnow = time.localtime()
-
-            if temperature!=temperature_old:
-                temperature_old = temperature
-                msg = 't= {:.1f} C'.format(temperature*1500/1023/3.55-267)
-                place_text(msg, 0)
-
-
-            msg = '{:.3f}'.format(batt_V*2.5*2/1023-0.1) + '\t'
-            msg = msg + '{:.3f}'.format(temperature*1500/1023/3.55-267)
-            msg = msg + '\n'
 
             print str(tnow.tm_hour) + ':' +\
                   str(tnow.tm_min) + ':' +\
@@ -115,10 +115,14 @@ with open('sensor_1.dat', 'a') as f:
             f.write(str(time.time()) + '\t' + msg)
             f.flush()
 
-            http_params = {'time': time.time(),
-                           'temp': temperature*1500/1023/3.55-267,
-                           'batt': batt_V*2.5*2/1023-0.1}
-            requests.get("http://134.168.45.2/data", params=http_params)
+            http_params = {'time': np.round(time.time()),
+                           'temp': temperature,
+                           'batt': batt_V}
+#            try:
+#                requests.post("http://134.168.45.2/data",
+#                                          data=json.dumps(http_params))
+#            except:
+#                pass
 
         if recv_buffer[0]==myId and recv_buffer[1]==remoteId:
             print 'remote'
