@@ -17,7 +17,7 @@ class Player():
 #        self.client.idletimeout = None          # timeout for fetching the result of the idle command is handled seperately, default: None
 
         self.MPDserverconnect()
-        self.mixer = alsaaudio.Mixer(cardindex=1)
+        self.mixer = alsaaudio.Mixer(control='PCM', id=0, cardindex=1)
 
     def MPDnext(self):
         for i in xrange(5):

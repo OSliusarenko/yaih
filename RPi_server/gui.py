@@ -19,6 +19,22 @@ def randomString(length):
     return ''.join(random.choice(string.lowercase+string.digits+
                    string.uppercase) for i in range(length))
 
+BTN_GO_UP = u'\u23f6'
+BTN_GO_DN = u'\u23f7'
+BTN_PAUSE = u'\u23f8'
+BTN_STOP = u'\u23f9'
+BTN_PREV = u'\u23ee'
+BTN_NEXT = u'\u23ed'
+BTN_PPAUSE = u'\u23ef'
+BTN_EJECT = u'\u23cf'
+BTN_BACK = u'\u2b8c'
+BTN_CLOSE = u'\u2bbd'
+BTN_VDN = u'\u2796'
+BTN_VUP = u'\u2795'
+BTN_CHOOSE = u'\ue531'
+BTN_A = u'\ue525'
+BTN_Z = u'\ue526'
+
 
 class Gui(threading.Thread):
 
@@ -49,13 +65,13 @@ class Gui(threading.Thread):
 
         self.lb.bind("<<ListboxSelect>>", self.onSelect)
 
-        self.ubtn = tk.Button(self.root, text=u"\u25b2",
+        self.ubtn = tk.Button(self.root, text=BTN_GO_UP,
                     command=partial(self.appendToCommandsQueue, 'u'))
-        self.ubtn.grid(row=1, column=2)
+        self.ubtn.grid(row=1, column=2, columnspan=1)
 
-        self.dbtn = tk.Button(self.root, text=u"\u25bc",
+        self.dbtn = tk.Button(self.root, text=BTN_GO_DN,
                     command=partial(self.appendToCommandsQueue, 'd'))
-        self.dbtn.grid(row=3, column=2)
+        self.dbtn.grid(row=3, column=2, columnspan=1)
 
         self.lbtn = tk.Button(self.root, text=u"\u25c0",
                     command=partial(self.appendToCommandsQueue, 'l'))
@@ -65,12 +81,12 @@ class Gui(threading.Thread):
                     command=partial(self.appendToCommandsQueue, 'r'))
         self.rbtn.grid(row=2, column=3, padx=5)
 
-        self.sbtn = tk.Button(self.root, text=u"\u25a0",
+        self.sbtn = tk.Button(self.root, text=BTN_STOP,
                     command=partial(self.appendToCommandsQueue, 's'))
         self.sbtn.grid(row=4, column=1)
 
         self.pbtn = tk.Button(self.root, height=1, width=6,
-                               text=u"\u25b6\u25ae\u25ae",
+                               text=BTN_PPAUSE,
                     command=partial(self.appendToCommandsQueue, 'p'))
         self.pbtn.grid(row=4, column=2, columnspan=2)
 
@@ -79,10 +95,10 @@ class Gui(threading.Thread):
         self.label.grid(row=6, column=0, columnspan=2, rowspan=1,
             padx=1, pady=1, sticky=(tk.S+tk.W))
 
-        self.fbtn = tk.Button(self.root, text="Clear", height=1, width=2,
+        self.fbtn = tk.Button(self.root, text=BTN_EJECT, height=1, width=2,
                     command=partial(self.appendToCommandsQueue, 'c'))
         self.fbtn.grid(row=6, column=2)
-        self.cbtn = tk.Button(self.root, text="Close", height=1, width=2,
+        self.cbtn = tk.Button(self.root, text=BTN_CLOSE, height=1, width=2,
                          command=self.onExit)
         self.cbtn.grid(row=6, column=3)
 
@@ -109,12 +125,18 @@ class Gui(threading.Thread):
 
     def getListBoxSelectedLine(self):
         idx = self.lb.curselection()
-        value = self.lb.get(idx)
-        return idx, value
+        try:
+            value = self.lb.get(idx)
+            return idx, value
+        except:
+            idx = (0,)
+            value = self.lb.get(idx)
+            print value
+            return idx, value
 
 
     def setStatus(self, value):
-        print 'setting status'
+        print(value)
         self.var.set(value)
 
 
@@ -124,29 +146,33 @@ class Gui(threading.Thread):
 
     def setMode(self, mode):
         if mode=='select_artists':
-            self.ubtn.config(text=u"\u25b2")
-            self.dbtn.config(text=u"\u25bc")
-            self.lbtn.config(state=tk.NORMAL, text='A<')
-            self.rbtn.config(state=tk.NORMAL, text='>Z')
-            self.pbtn.config(text='Choose')
+            self.ubtn.config(state=tk.NORMAL, text=BTN_GO_UP)
+            self.dbtn.config(state=tk.NORMAL, text=BTN_GO_DN)
+            self.lbtn.config(state=tk.NORMAL, text=BTN_A)
+            self.rbtn.config(state=tk.NORMAL, text=BTN_Z)
+            self.pbtn.config(state=tk.NORMAL, text=BTN_CHOOSE)
             self.sbtn.config(state=tk.DISABLED)
         elif mode=='add_albums':
-            self.ubtn.config(text=u"\u25b2")
-            self.dbtn.config(text=u"\u25bc")
-            self.lbtn.config(state=tk.DISABLED)
-            self.rbtn.config(state=tk.DISABLED)
+            self.ubtn.config(state=tk.NORMAL, text=BTN_GO_UP)
+            self.dbtn.config(state=tk.NORMAL, text=BTN_GO_DN)
+            self.lbtn.config(state=tk.NORMAL, text=BTN_A)
+            self.rbtn.config(state=tk.NORMAL, text=BTN_Z)
             self.pbtn.config(text=u'Add')#/ \u25b6
-            self.sbtn.config(state=tk.NORMAL, text='<-')
+            self.sbtn.config(state=tk.NORMAL, text=BTN_BACK)
         elif mode=='ready_to_play':
-            self.ubtn.config(text=u"\u25b2")
-            self.dbtn.config(text=u"\u25bc")
-            self.pbtn.config(text=u'\u25b6')
+            self.ubtn.config(state=tk.NORMAL, text=BTN_GO_UP)
+            self.dbtn.config(state=tk.NORMAL, text=BTN_GO_DN)
+            self.lbtn.config(state=tk.NORMAL, text=BTN_A)
+            self.rbtn.config(state=tk.NORMAL, text=BTN_Z)
+            self.pbtn.config(state=tk.NORMAL, text=BTN_PPAUSE)
+            self.sbtn.config(state=tk.NORMAL, text=BTN_BACK)
         elif mode=='playing':
-            self.pbtn.config(text='II')
-            self.ubtn.config(text='vol+')
-            self.dbtn.config(text='vol-')
-            self.lbtn.config(state=tk.NORMAL, text='<<')
-            self.rbtn.config(state=tk.NORMAL, text='>>')
+            self.pbtn.config(text=BTN_PAUSE)
+            self.ubtn.config(text=BTN_VUP)
+            self.dbtn.config(text=BTN_VDN)
+            self.lbtn.config(state=tk.NORMAL, text=BTN_PREV)
+            self.rbtn.config(state=tk.NORMAL, text=BTN_NEXT)
+            self.sbtn.config(state=tk.NORMAL, text=BTN_STOP)
 
     def appendToCommandsQueue(self, command):
         """ Appends a command to the end of the queue, raises USR1 """
@@ -166,8 +192,10 @@ class Gui(threading.Thread):
     def run(self):
         self.root = tk.Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.onExit)
+        self.root.tk.call('encoding', 'system', 'utf-8')
 
         self.root.geometry("320x240+0+0")
+        #tkMessageBox.showinfo("UTF-8 example", u'\ud83d\udd08')
 
 # To use this on Adafruit's LCD for RPi
 #    uncomment  the following line

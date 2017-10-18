@@ -45,8 +45,11 @@ def main():
         song = what_song_playing()
         if not song == old_song:
             old_song = song
-            gui.setStatus('{:} [{:}]'.format(song['title'],
-                          song['artist'])[:32])
+            try:
+                gui.setStatus('{:} [{:}]'.format(song['title'],
+                              song['artist'])[:32])
+            except:
+                pass
 
     def setMode(mode):
         global currentMode
@@ -175,7 +178,7 @@ def main():
                 while not letsDo:
                     signal.pause()     # wait for interrupt (command?)
 
-                print('interrupt')
+#                print('interrupt')
 
                 while True:
                     try:
