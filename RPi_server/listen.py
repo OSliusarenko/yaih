@@ -1,139 +1,212 @@
-from nrf24_BOARD import NRF24
-import time
 import datetime
-import RPi.GPIO as GPIO
-import sys
-import signal
-import requests
-import json
+import time
+import argparse
+from influxdb import InfluxDBClient
+
+from nrf24_BOARD import NRF24
+from pyA20.gpio import gpio
+from pyA20.gpio import port
+
 import numpy as np
-from HD44780_BOARD import HD44780
+
+import io
+from PIL import Image, ImageDraw, ImageFont
 
 
-def strToListOfInt(msg):
-    return [ord(c) for c in msg]
+def txt2strpic(txt, image, font, size, conv_to_char=True):
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(font, size)
+
+    draw.text((10, 0), txt, fill=1, font=font)
+
+    output = io.BytesIO()
+
+    image.save(output, format="XBM")
+    out = output.getvalue()
+    res = out.split('{')[1].split('}')[0].split(',')
+
+    mystr = ''
+
+    k = 0
+    for s in res:
+        k += 1
+        if k == 11:
+            k = 0
+            mystr += '{:08b}'.format(int(s, 16))[:4][::-1]
+        else:
+            mystr += '{:08b}'.format(int(s.strip(), 16))[::-1]
+
+    if conv_to_char:
+        res = [mystr[i:i+8] for i in xrange(0, len(mystr), 8)]
+        mystr = ''
+        for b in res:
+            mystr += chr(int(b, 2))
+        mystr = [mystr[i:i+24] for i in xrange(0, len(mystr), 24)]
+
+    return mystr
 
 
-def interrupt_signal_handler(ssignal, frame):
-    """ Cleans out pins when ^C received"""
-    print 'Exitting...\n'
-    signal.setitimer(signal.ITIMER_REAL, 0) # ?
-    GPIO.cleanup()
-    sys.exit()
+class InfluxDB(object):
+    def __init__(self):
+        """Establish a connection to the InfluxDB."""
+        self.connect()
 
-def italarm_signal_handler(ssignal, stack):
-    """ Does repeatedly one action, for clock """
-    tnow = datetime.datetime.today()
-    msg = '{:%a %d %b %H:%M}'.format(tnow)
-    place_text(msg, 1)
+    def connect(self):
+        self.client = InfluxDBClient(host='127.0.0.1', port=8086,
+                                     username='root', password='secret',
+                                     database='mydb')
+
+    def send_data(self, json_body):
+        self.client.write_points(json_body)
+
+    def close(self):
+        self.client.close()
 
 
-def place_text(strings, row):
-    """ Wrapper for LCD """
-    s_tmp = strings+' '*(16-len(strings))
-    if row == 1:
-        s_tmp = '\n' + s_tmp
-    LCD.message(s_tmp)
+class Sensor(object):
+    def __init__(self, sensor_name, measurement_name, index_name):
+        self.sensor_name = sensor_name
+        self.measurement_name = measurement_name
+        self.index_name = index_name
 
-pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7], [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
+    def create_json(self, value):
+        epoch = int(time.time())*1000000000
+        return [{
+                "measurement": self.measurement_name,
+                "tags": {
+                    "sensor": self.sensor_name,
+                    "index": self.index_name
+                },
+                "time": epoch,
+                "fields": {
+                    "value": value
+                }
+                }]
 
-myId = 0x10
-remoteId = 0x00
-thermoId = 0xff
 
-radio = NRF24()
-radio.begin(0, 0, 15)
+class NRF24L01(object):
+    def __init__(self):
+        pipes = [[0xe7, 0xe7, 0xe7, 0xe7, 0xe7],
+                     [0xc2, 0xc2, 0xc2, 0xc2, 0xc2]]
 
-radio.setRetries(0,0xf)
+        self.myId = 0x10
+        self.remoteId = 0x00
+        self.thermoId = 0xff
 
-radio.setPayloadSize(8)
-radio.setChannel(85)
-radio.setDataRate(NRF24.BR_1MBPS)
-radio.setPALevel(NRF24.PA_MAX)
-radio.setAutoAck(False);
+        self.radio = NRF24()
+        cepin = port.PA2
+        self.radio.begin(1, 0, cepin)
 
-radio.setAutoAck(True)
-radio.enableDynamicPayloads()
-radio.enableAckPayload()
+        self.radio.setRetries(0,0xf)
 
-radio.openWritingPipe(pipes[0])
-radio.openReadingPipe(1, pipes[1])
+        self.radio.setPayloadSize(8)
+        self.radio.setChannel(85)
+        self.radio.setDataRate(NRF24.BR_1MBPS)
+        self.radio.setPALevel(NRF24.PA_MAX)
+        self.radio.setAutoAck(True);
 
-radio.startListening()
-radio.stopListening()
+        self.radio.enableDynamicPayloads()
+        #radio.enableAckPayload()
 
-radio.printDetails()
+        self.radio.openWritingPipe(pipes[0])
+        self.radio.openReadingPipe(1, pipes[1])
 
-radio.startListening()
+        self.radio.startListening()
+        self.radio.stopListening()
 
-c=1
+        self.radio.printDetails()
 
-LCD = HD44780()
+        self.radio.startListening()
 
-signal.signal(signal.SIGINT, interrupt_signal_handler)
+    def packet_available(self):
+        return self.radio.available()
 
-place_text('temp', 0)
-place_text('-= loading =-', 1)
-
-# for clock
-signal.signal(signal.SIGALRM, italarm_signal_handler)
-signal.setitimer(signal.ITIMER_REAL, 60, 60)
-###
-
-with open('sensor_1.dat', 'a') as f:
-    while True:
-        pipe = [0]
-        # wait for incoming packet from transmitter
-        while not radio.available(pipe):
-            time.sleep(10000/1000000.0)
-
+    def packet_read(self):
         recv_buffer = []
-        radio.read(recv_buffer, radio.getDynamicPayloadSize())
+        myDevices = [self.thermoId, self.remoteId]
+        payload_size = self.radio.getDynamicPayloadSize()
+        self.radio.read(recv_buffer, payload_size)
+        if payload_size > 2:
+            if recv_buffer[0] == self.myId:
+                try:
+                    idx = myDevices.index(recv_buffer[1])
+                    return ['thermo', 'remote'][idx], recv_buffer[2:]
+                except ValueError:
+                    print('Packet from unknown device received')
+            else:
+                print('Unknown packet received')
+        return 'unknown', recv_buffer
 
-        if recv_buffer[0]==myId and recv_buffer[1]==thermoId:
-            batt_V = ((recv_buffer[6]<<8 & 0xFF00)
-                    + (recv_buffer[7] & 0xFF))*2.5*2/1023-0.1
-            temperature = ((recv_buffer[4]<<8 & 0xFF00)
-                         + (recv_buffer[5] & 0xFF))*1500/1023/3.55-267
+    def stop(self):
+        self.radio.stopListening()
 
-            msg = 't= {:.2f} C'.format(temperature)
-            place_text(msg, 0)
-
-            batt_V = np.round(batt_V*10)/10
-            temperature = np.round(temperature*100)/100
-
-            msg = '{:.1f}'.format(batt_V) + '\t'
-            msg = msg + '{:.1f}'.format(temperature)
-            msg = msg + '\n'
-
-            tnow = time.localtime()
-
-            print str(tnow.tm_hour) + ':' +\
-                  str(tnow.tm_min) + ':' +\
-                  str(tnow.tm_sec) +  ' ' + msg,
-
-            f.write(str(time.time()) + '\t' + msg)
-            f.flush()
-
-            http_params = {'time': np.round(time.time()),
-                           'temp': temperature,
-                           'batt': batt_V}
-#            try:
-#                requests.post("http://134.168.45.2/data",
-#                                          data=json.dumps(http_params))
-#            except:
-#                pass
-
-        if recv_buffer[0]==myId and recv_buffer[1]==remoteId:
-            print 'remote'
-            if recv_buffer[2]==ord('g') and recv_buffer[3]==ord('t'):
-                print 'Sending time...'
-                tm = time.localtime(time.time())
-                akpl_buf=[tm.tm_hour, tm.tm_min, tm.tm_sec]
-                print akpl_buf
-                radio.writeAckPayload(0, akpl_buf, len(akpl_buf))
+    def transmit(self, packet):
+        self.radio.write(packet)
 
 
-        c = c + 1
+if __name__ == '__main__':
+
+    def send_response_to_remote(chunk, response):
+        packet = str(chr(gate.myId)) + str(chr(chunk)) + response + str(chr(0x00))
+        gate.transmit(packet)
+
+    def wait_response_from_remote():
+        if gate.packet_available():
+            who_sent, packet = gate.packet_read()
+            if who_sent == 'remote':
+                return int(packet[0])
+        else:
+            return -1
+
+
+    gate = NRF24L01()
+    db = InfluxDB()
+
+    # define sensors
+    outer_temp = Sensor("my_outdoor_sensor", "esp8266", 'street_temperatue')
+    outer_batt = Sensor("my_outdoor_sensor", "esp8266", 'battery_voltage')
+    batt = 0; temp = 0
+
+    mystr = txt2strpic('Hola!', Image.new("1", (84,48), color=0),
+                       'Times_New_Roman_Bold.ttf', 25)
+
+
+    while True:
+        time.sleep(0.1)
+
+        if gate.packet_available():
+            who_sent, packet = gate.packet_read()
+            print('Packet from {:} received: {:}'.format(who_sent, packet))
+
+            if who_sent == 'thermo':
+                batt = ((packet[4]<<8 & 0xFF00)
+                        + (packet[5] & 0xFF))*2.5*2/1023-0.1
+                temp = ((packet[2]<<8 & 0xFF00)
+                        + (packet[3] & 0xFF))*1500/1023/3.55-267
+
+                print('{:.2f}V {:.2f}C'.format(batt, temp))
+                db.send_data(outer_temp.create_json(temp))
+                db.send_data(outer_batt.create_json(batt))
+
+            elif who_sent == 'remote':
+                r =  [0xFF, 0x00, 0xFF, 0x00, 0xFF,
+                      0x00, 0x00, 0x00, 0x00, 0x00,
+                      0x00, 0x00, 0x00, 0x00, 0x00,
+                      0x00, 0x00, 0x00, 0x00, 0x00,
+                      0x00, 0x00, 0x00, 0x00]
+#                r = np.random.randint(0xFF, size=24)
+
+                gate.radio.stopListening()
+                for h in xrange(1):
+                    print('Attempt {:}'.format(h))
+                    for chunk in xrange(21):
+                        send_response_to_remote(chunk, ''.join(map(chr, r)))
+#                        send_response_to_remote(chunk, mystr[chunk])
+#                        print(mystr[chunk])
+                        time.sleep(0.005)
+                gate.radio.startListening()
+
+
+
 
 

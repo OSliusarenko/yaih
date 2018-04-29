@@ -14,12 +14,13 @@
 # Python port of Maniacbug NRF24L01 library
 # Author: Joao Paulo Barraca <jpbarraca@gmail.com>
 #
-import RPi.GPIO as GPIO
-GPIO.setmode(GPIO.BOARD)
-GPIO.setwarnings(False)
-
-import spidev
+from pyA20.gpio import gpio
+import spidev 
 import time
+#gpio.setcfg(led, gpio.OUTPUT)
+#gpio.output(led, 0)
+
+
 import sys
 
 
@@ -181,9 +182,9 @@ class NRF24:
 
     def ce(self, level):
         if level == NRF24.HIGH:
-            GPIO.output(self.ce_pin, GPIO.HIGH)
+            gpio.output(self.ce_pin, 1)
         else:
-            GPIO.output(self.ce_pin, GPIO.LOW)
+            gpio.output(self.ce_pin, 0)
         return
 
     def read_register(self, reg, blen=1):
@@ -347,7 +348,8 @@ class NRF24:
         self.spidev.open(major, minor)
         self.ce_pin = ce_pin
 
-        GPIO.setup(self.ce_pin, GPIO.OUT)
+        gpio.init()
+        gpio.setcfg(self.ce_pin, gpio.OUTPUT)
 
         time.sleep(5 / 1000000.0)
 
