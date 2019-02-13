@@ -10,40 +10,6 @@ from pyA20.gpio import port
 import numpy as np
 
 import io
-from PIL import Image, ImageDraw, ImageFont
-
-
-def txt2strpic(txt, image, font, size, conv_to_char=True):
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype(font, size)
-
-    draw.text((10, 0), txt, fill=1, font=font)
-
-    output = io.BytesIO()
-
-    image.save(output, format="XBM")
-    out = output.getvalue()
-    res = out.split('{')[1].split('}')[0].split(',')
-
-    mystr = ''
-
-    k = 0
-    for s in res:
-        k += 1
-        if k == 11:
-            k = 0
-            mystr += '{:08b}'.format(int(s, 16))[:4][::-1]
-        else:
-            mystr += '{:08b}'.format(int(s.strip(), 16))[::-1]
-
-    if conv_to_char:
-        res = [mystr[i:i+8] for i in xrange(0, len(mystr), 8)]
-        mystr = ''
-        for b in res:
-            mystr += chr(int(b, 2))
-        mystr = [mystr[i:i+24] for i in xrange(0, len(mystr), 24)]
-
-    return mystr
 
 
 class InfluxDB(object):
@@ -166,10 +132,6 @@ if __name__ == '__main__':
     outer_temp = Sensor("my_outdoor_sensor", "esp8266", 'street_temperatue')
     outer_batt = Sensor("my_outdoor_sensor", "esp8266", 'battery_voltage')
     batt = 0; temp = 0
-
-    mystr = txt2strpic('Hola!', Image.new("1", (84,48), color=0),
-                       'Times_New_Roman_Bold.ttf', 25)
-
 
     while True:
         time.sleep(0.1)
