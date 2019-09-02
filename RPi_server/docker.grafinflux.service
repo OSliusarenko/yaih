@@ -1,0 +1,17 @@
+[Unit]
+Description=InfluxDB and Grafana Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=no
+RemainAfterExit=yes
+WorkingDirectory=/home/user
+ExecStartPre=/usr/bin/docker start influxdb
+ExecStart=/usr/bin/docker start grafana
+ExecStop=/usr/bin/docker stop grafana
+ExecStopPost=/usr/bin/docker stop influxdb
+
+[Install]
+WantedBy=default.target

@@ -146,7 +146,7 @@ if __name__ == '__main__':
                 temp = ((packet[2]<<8 & 0xFF00)
                         + (packet[3] & 0xFF))*1500/1023/3.55-267
 
-                print('{:.2f}V {:.2f}C'.format(batt, temp))
+                print('{:.2f}V {:.1f}C'.format(batt, temp))
                 db.send_data(outer_temp.create_json(temp))
                 db.send_data(outer_batt.create_json(batt))
 
