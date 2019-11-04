@@ -15,12 +15,13 @@ import io
 class InfluxDB(object):
     def __init__(self):
         """Establish a connection to the InfluxDB."""
-        self.connect()
+        pass
+#        self.connect()
 
     def connect(self):
-        self.client = InfluxDBClient(host='127.0.0.1', port=8086,
-                                     username='root', password='secret',
-                                     database='mydb')
+        self.client = InfluxDBClient(host='', port=,
+                                     username='', password='',
+                                     database='', timeout=10)
 
     def send_data(self, json_body):
         self.client.write_points(json_body)
@@ -138,7 +139,7 @@ if __name__ == '__main__':
 
         if gate.packet_available():
             who_sent, packet = gate.packet_read()
-            print('Packet from {:} received: {:}'.format(who_sent, packet))
+            #print('Packet from {:} received: {:}'.format(who_sent, packet))
 
             if who_sent == 'thermo':
                 batt = ((packet[4]<<8 & 0xFF00)
@@ -146,9 +147,14 @@ if __name__ == '__main__':
                 temp = ((packet[2]<<8 & 0xFF00)
                         + (packet[3] & 0xFF))*1500/1023/3.55-267
 
-                print('{:.2f}V {:.1f}C'.format(batt, temp))
-                db.send_data(outer_temp.create_json(temp))
-                db.send_data(outer_batt.create_json(batt))
+                #print('{:.2f}V {:.1f}C'.format(batt, temp))
+                try:
+                    db.connect()
+                    db.send_data(outer_temp.create_json(temp))
+                    db.send_data(outer_batt.create_json(batt))
+                    db.close()
+                except:
+                    pass
 
             elif who_sent == 'remote':
                 r =  [0xFF, 0x80, 0xFF, 0xFF, 0xFF,

@@ -1,11 +1,9 @@
 [Unit]
 Description=NRF24L01 listen Service
-After=docker.grafinflux.service
-Requires=docker.grafinflux.service
 
 [Service]
 TimeoutStartSec=0
-Restart=no
+Restart=yes
 WorkingDirectory=/home/user/yaih/RPi_server
 ExecStart=/usr/bin/python listen.py
 
